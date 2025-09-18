@@ -1,0 +1,21 @@
+{% extends "index.html" %}
+
+{% block title %}Đăng ký{% endblock %}
+
+{% block content %}
+<h2>Đăng ký tài khoản</h2>
+
+{% if error %}
+  <p style="color:red;">{{ error }}</p>
+{% endif %}
+
+<form method="POST">
+    {% csrf_token %}
+    <input type="text" name="username" placeholder="Tên đăng nhập" required>
+    <input type="password" name="password1" placeholder="Mật khẩu" required>
+    <input type="password" name="password2" placeholder="Xác nhận mật khẩu" required>
+    <button type="submit">Đăng ký</button>
+</form>
+
+<p>Đã có tài khoản? <a href="{% url 'sign_in' %}">Đăng nhập</a></p>
+{% endblock %}

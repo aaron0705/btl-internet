@@ -1,0 +1,72 @@
+{% extends "index.html" %}
+
+{% block title %}Bảng điều khiển{% endblock %}
+{% block header %} <a href="{% url 'sign_out' %}">Đăng xuất</a> {% endblock %}
+
+{% block content %}
+<h1>Bảng điều khiển</h1>
+
+<div class="dashboard-container">
+
+    <!-- Sidebar bên trái -->
+    <nav class="sidebar">
+        <ul>
+            <li><a href="{% url 'order' %}">🍽 Gọi món</a></li>
+            <li><a href="{% url 'payment' %}">💳 Thanh toán</a></li>
+            <li><a href="{% url 'invoice' %}">📄 Hóa đơn</a></li>
+            <li><a href="{% url 'booking' %}">📅 Đặt bàn</a></li>
+        </ul>
+    </nav>
+
+    <!-- Khu vực nội dung chính -->
+    <section class="main-content">
+        <p>Chào mừng bạn đến bảng điều khiển. Hãy chọn chức năng từ menu bên trái.</p>
+    </section>
+
+</div>
+
+<style>
+/* Bố cục chung */
+.dashboard-container {
+    display: flex;
+    margin-top: 20px;
+}
+
+/* Sidebar bên trái */
+.sidebar {
+    width: 200px;
+    background: #f3f3f3;
+    padding: 15px;
+    border-right: 1px solid #ccc;
+}
+
+.sidebar ul {
+    list-style: none;
+    padding: 0;
+}
+
+.sidebar li {
+    margin-bottom: 15px;
+}
+
+.sidebar a {
+    text-decoration: none;
+    color: #333;
+    font-weight: 600;
+    display: block;
+    padding: 8px 12px;
+    border-radius: 5px;
+    transition: background 0.2s;
+}
+
+.sidebar a:hover {
+    background: #ddd;
+}
+
+/* Nội dung bên phải */
+.main-content {
+    flex: 1;
+    padding: 20px;
+}
+</style>
+{% endblock %}

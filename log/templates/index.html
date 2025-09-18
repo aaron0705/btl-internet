@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Trang chính{% endblock %}</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+
+    <header>
+        {% block header %}
+        <h1>Website Demo</h1>
+        <nav>
+            <a href="{% url 'sign_in' %}">Đăng nhập</a> |
+            <a href="{% url 'sign_up' %}">Đăng ký</a> |
+        </nav>
+        {% endblock %}
+    </header>
+
+    <main>
+        {% block content %}
+        <!-- Nội dung riêng của từng trang sẽ hiển thị tại đây -->
+        {% endblock %}
+    </main>
+
+    <footer>
+        <p>© 2025 - Demo Django</p>
+    </footer>
+
+</body>
+</html>

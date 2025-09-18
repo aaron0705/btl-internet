@@ -1,0 +1,12 @@
+{% extends "index.html" %}
+
+{% block title %}Đăng xuất{% endblock %}
+
+{% block content %}
+<h2>Bạn có chắc muốn đăng xuất?</h2>
+
+<form method="POST" action="{% url 'sign_out' %}">
+    {% csrf_token %}
+    <button type="submit">Đăng xuất</button>
+</form>
+{% endblock %}
