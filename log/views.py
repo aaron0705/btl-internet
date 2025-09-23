@@ -1,8 +1,22 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
+import pymysql
+
 
 # Create your views here.\
+conn = pymysql.connect(
+    host="localhost",
+    user="django",
+    password="matkhau123",
+    port=3306,
+    database="btl_web",
+    charset="utf8mb4",
+    cursorclass=pymysql.cursors.DictCursor
+)
+
+# 2. Tạo cursor
+cursor = conn.cursor()
 
 # đăng ký
 def sign_up(request):
@@ -47,3 +61,30 @@ def sign_in(request):
 def sign_out(request):
     logout(request)
     return redirect("sign_in")
+
+def dashboard(request):
+    return render(request, "dashboard.html")
+
+def categories(request):
+    return 
+
+def transactions(request):
+    if request.method == "POST":
+        type = request.POST.get("type")
+        amounts = request.POST.get("amounts")
+        date = request.POST.get("date")
+        time = request.POST.get("time")
+        note = request.POST.get("note")
+
+        cursor.execute("INSERT INTO users VALUES (%s, %s, %s, %s, %s)", (type, amounts, date, time, note))
+
+    cmd = "SELECT * FROM transactions"
+    cursor.execute(cmd + ";")
+    transactions = cursor.fetchall()
+    return render(request, "transactions.html", {"transactions" : transactions})
+
+def export_csv(request):
+    return
+
+def summary(request):
+    return

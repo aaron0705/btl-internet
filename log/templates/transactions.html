@@ -1,0 +1,17 @@
+{% extends "index.html" %}
+{% block header %}  {% endblock %}
+
+{% block content %}
+    <div>
+        <!-- Thanh menu trên cùng -->
+        <nav>
+            <ul>
+                {% for transaction in transactions %}
+                    <li> {{ transaction }} </li>
+                {% endfor %}
+            </ul>
+        </nav>
+    </div>
+{% endblock %}
+
+

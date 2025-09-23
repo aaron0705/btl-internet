@@ -1,72 +1,66 @@
 {% extends "index.html" %}
-
-{% block title %}Bảng điều khiển{% endblock %}
-{% block header %} <a href="{% url 'sign_out' %}">Đăng xuất</a> {% endblock %}
+{% block header %}  {% endblock %}
 
 {% block content %}
-<h1>Bảng điều khiển</h1>
-
 <div class="dashboard-container">
-
-    <!-- Sidebar bên trái -->
-    <nav class="sidebar">
+    <!-- Thanh menu trên cùng -->
+    <nav class="navbar">
         <ul>
-            <li><a href="{% url 'order' %}">🍽 Gọi món</a></li>
-            <li><a href="{% url 'payment' %}">💳 Thanh toán</a></li>
-            <li><a href="{% url 'invoice' %}">📄 Hóa đơn</a></li>
-            <li><a href="{% url 'booking' %}">📅 Đặt bàn</a></li>
+            <li><a href="{% url 'categories' %}">Danh mục</a></li>
+            <li><a href="{% url 'transactions' %}">Giao dịch</a></li>
+            <li><a href="{% url 'export_csv' %}">Xuất CSV</a></li>
+            <li><a href="{% url 'summary' %}">Tổng kết</a></li>
         </ul>
     </nav>
 
-    <!-- Khu vực nội dung chính -->
-    <section class="main-content">
-        <p>Chào mừng bạn đến bảng điều khiển. Hãy chọn chức năng từ menu bên trái.</p>
+    <!-- Nội dung chính -->
+    <section class="dashboard-content">
+        <h1>Bảng Điều Khiển</h1>
+        <p>Chọn tính năng ở menu trên để sử dụng.</p>
     </section>
-
 </div>
+{% endblock %}
 
 <style>
-/* Bố cục chung */
-.dashboard-container {
-    display: flex;
-    margin-top: 20px;
+    .dashboard-container {
+    width: 100%;
+    margin: 0 auto;
+    padding: 20px;
 }
 
-/* Sidebar bên trái */
-.sidebar {
-    width: 200px;
-    background: #f3f3f3;
-    padding: 15px;
-    border-right: 1px solid #ccc;
+.navbar {
+    background-color: #2c3e50;
+    padding: 10px 0;
 }
 
-.sidebar ul {
+.navbar ul {
     list-style: none;
+    display: flex;
+    justify-content: center; /* cân giữa */
+    margin: 0;
     padding: 0;
 }
 
-.sidebar li {
-    margin-bottom: 15px;
+.navbar li {
+    margin: 0 20px;
 }
 
-.sidebar a {
+.navbar a {
     text-decoration: none;
-    color: #333;
-    font-weight: 600;
-    display: block;
-    padding: 8px 12px;
-    border-radius: 5px;
-    transition: background 0.2s;
+    color: #ecf0f1;
+    font-weight: bold;
+    padding: 8px 16px;
+    border-radius: 4px;
+    transition: background 0.3s;
 }
 
-.sidebar a:hover {
-    background: #ddd;
+.navbar a:hover {
+    background-color: #3498db;
+    color: #fff;
 }
 
-/* Nội dung bên phải */
-.main-content {
-    flex: 1;
-    padding: 20px;
+.dashboard-content {
+    text-align: center;
+    margin-top: 40px;
 }
 </style>
-{% endblock %}
