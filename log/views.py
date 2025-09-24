@@ -2,9 +2,11 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 import pymysql
+from datetime import datetime
 
 
 # Create your views here.\
+# Kết nối database
 conn = pymysql.connect(
     host="localhost",
     user="django",
@@ -72,11 +74,13 @@ def transactions(request):
     if request.method == "POST":
         type = request.POST.get("type")
         amounts = request.POST.get("amounts")
-        date = request.POST.get("date")
-        time = request.POST.get("time")
+        now = datetime.now()
+        date = now.date()
+        time = now.time()
         note = request.POST.get("note")
 
         cursor.execute("INSERT INTO users VALUES (%s, %s, %s, %s, %s)", (type, amounts, date, time, note))
+        return redirect("transactions")
 
     cmd = "SELECT * FROM transactions"
     cursor.execute(cmd + ";")

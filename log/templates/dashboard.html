@@ -1,27 +1,5 @@
 {% extends "index.html" %}
-{% block header %}  {% endblock %}
-
-{% block content %}
-<div class="dashboard-container">
-    <!-- Thanh menu trên cùng -->
-    <nav class="navbar">
-        <ul>
-            <li><a href="{% url 'categories' %}">Danh mục</a></li>
-            <li><a href="{% url 'transactions' %}">Giao dịch</a></li>
-            <li><a href="{% url 'export_csv' %}">Xuất CSV</a></li>
-            <li><a href="{% url 'summary' %}">Tổng kết</a></li>
-        </ul>
-    </nav>
-
-    <!-- Nội dung chính -->
-    <section class="dashboard-content">
-        <h1>Bảng Điều Khiển</h1>
-        <p>Chọn tính năng ở menu trên để sử dụng.</p>
-    </section>
-</div>
-{% endblock %}
-
-<style>
+{% block header %} <style>
     .dashboard-container {
     width: 100%;
     margin: 0 auto;
@@ -63,4 +41,25 @@
     text-align: center;
     margin-top: 40px;
 }
-</style>
+</style> {% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Thanh menu trên cùng -->
+    <nav class="navbar">
+        <ul>
+            <li><a href="{% url 'categories' %}">Danh mục</a></li>
+            <li><a href="{% url 'transactions' %}">Giao dịch</a></li>
+            <li><a href="{% url 'export_csv' %}">Xuất CSV</a></li>
+            <li><a href="{% url 'summary' %}">Tổng kết</a></li>
+        </ul>
+    </nav>
+
+    <!-- Nội dung chính -->
+    <section class="dashboard-content">
+        <h1>Bảng Điều Khiển</h1>
+        <p>Chọn tính năng ở menu trên để sử dụng.</p>
+    </section>
+</div>
+{% endblock %}
+
