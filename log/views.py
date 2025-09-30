@@ -88,7 +88,7 @@ def transactions(request):
     transactions = cursor.fetchall()
     return render(request, "transactions.html", {"transactions" : transactions})
 
-def transaction_filer_setup(request):
+def transaction_filer_option(request):
     if request.method == "POST":
         field = request.POST.get("field")
 
