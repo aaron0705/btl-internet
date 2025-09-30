@@ -9,5 +9,7 @@ urlpatterns = [
     path('categories', views.categories, name = "categories"),
     path('transactions', views.transactions, name = "transactions"),
     path('export_csv', views.export_csv, name = "export_csv"),
-    path('summary', views.summary, name = "summary")
+    path('summary', views.summary, name = "summary"),
+    path('transactions/filter_option', views.transaction_filer_option, name = "filter_option"),
+    path('transactions/filter', views.transacton_filter, name = "filter")
 ]
