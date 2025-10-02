@@ -1,0 +1,8 @@
+{% extends "index.html" %}
+{% block content %}
+<h2>Xóa danh mục</h2>
+<p>Bạn chắc chắn muốn xóa "{{ category.name }}"?</p>
+<form method="post">{% csrf_token %}
+  <button type="submit">Xóa</button>
+</form>
+{% endblock %}

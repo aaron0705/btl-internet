@@ -1,0 +1,11 @@
+{% extends "index.html" %}
+{% block content %}
+<h2>{% if form.instance.pk %}Sửa{% else %}Thêm{% endif %} danh mục</h2>
+
+<form method="post" action="{% url 'category_create' %}">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit">Lưu</button>
+</form>
+
+{% endblock %}

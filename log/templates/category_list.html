@@ -1,0 +1,19 @@
+{% extends "index.html" %}
+
+
+
+{% block content %}
+    <h1>Danh mục</h1>
+    <a href="{% url 'category_create' %}">+ Thêm danh mục</a>
+    <ul>
+    {% for c in categories %}
+        <li>
+            {{ c.name }} ({{ c.get_type_display }})
+            <a href="{% url 'category_edit' c.id %}">Sửa</a>
+            <a href="{% url 'category_delete' c.id %}">Xóa</a>
+        </li>
+    {% empty %}
+    <li>Chưa có danh mục</li>
+    {% endfor %}
+    </ul>
+{% endblock %}
