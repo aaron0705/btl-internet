@@ -1,0 +1,58 @@
+{% extends "index.html" %}
+{% block header %}{% endblock %}
+
+{% block content %}
+<div class="transactions-container">
+    <h2>Danh sách giao dịch</h2>
+
+    <table border="1" cellpadding="5" cellspacing="0">
+        <thead>
+            <tr>
+                <th>Danh mục</th>
+                <th>Loại</th>
+                <th>Số tiền</th>
+                <th>Ghi chú</th>
+                <th>Ngày</th>
+                <th>Giờ</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for transaction in transactions %}
+            <tr>
+                <td>
+                    {% if transaction.category %}
+                        {{ transaction.category.name }}
+                    {% else %}
+                        Chưa phân loại
+                    {% endif %}
+                </td>
+                <td>{{ transaction.get_type_display }}</td>
+                <td>{{ transaction.amount }}</td>
+                <td>{{ transaction.note }}</td>
+                <td>{{ transaction.date }}</td>
+                <td>{{ transaction.time }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6">Không có giao dịch nào</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if page_obj.has_other_pages %}
+    <div class="pagination" style="margin-top: 15px;">
+        {% if page_obj.has_previous %}
+            <a href="?page=1">&laquo; Đầu</a>
+            <a href="?page={{ page_obj.previous_page_number }}">Trước</a>
+        {% endif %}
+
+        <span>Trang {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}">Tiếp</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}">Cuối &raquo;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
