@@ -4,6 +4,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from .models import Category, Transaction
 from .forms import CategoryForm
+from django.core.paginator import Paginator 
 
 # Đăng ký
 def sign_up(request):
@@ -108,8 +109,15 @@ def transactions(request):
         return redirect("transactions")
 
     transactions = Transaction.objects.filter(user=request.user).order_by('-date', '-time')
-    return render(request, "transactions.html", {"transactions": transactions})
 
+    paginator = Paginator(transactions, 10)  # mỗi trang 10 giao dịch
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, "transactions.html", {
+        "transactions": page_obj.object_list,
+        "page_obj": page_obj
+    })
 
 # Xuất CSV
 @login_required
