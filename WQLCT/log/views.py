@@ -5,6 +5,8 @@ from django.contrib.auth.decorators import login_required
 from .models import Category, Transaction
 from .forms import CategoryForm
 from django.core.paginator import Paginator 
+import csv
+from django.http import HttpResponse
 
 # Đăng ký
 def sign_up(request):
@@ -122,7 +124,29 @@ def transactions(request):
 # Xuất CSV
 @login_required
 def export_csv(request):
-    return HttpResponse("Chưa triển khai")
+    # Lấy toàn bộ giao dịch của user hiện tại
+    transactions = Transaction.objects.filter(user=request.user).order_by('-date', '-time')
+
+    # Tạo response HTTP dạng CSV
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="transactions.csv"'
+
+    # Tạo writer
+    writer = csv.writer(response)
+    writer.writerow(['Ngày', 'Giờ', 'Loại', 'Danh mục', 'Số tiền', 'Ghi chú'])
+
+    # Ghi từng dòng dữ liệu
+    for t in transactions:
+        writer.writerow([
+            t.date.strftime('%Y-%m-%d'),
+            t.time.strftime('%H:%M:%S'),
+            t.get_type_display(),
+            t.category.name if t.category else 'Chưa phân loại',
+            f"{t.amount:.2f}",
+            t.note
+        ])
+
+    return response
 
 
 # Tổng kết
