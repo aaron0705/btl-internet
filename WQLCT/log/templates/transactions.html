@@ -4,9 +4,8 @@
 {% block content %}
 <div class="transactions-container">
     <h2>Danh sách giao dịch</h2>
-    <a href="{% url 'export_csv' %}" class="btn btn-success">⬇ Xuất CSV</a>
 
-    <table border="1" cellpadding="5" cellspacing="0">
+    <table border="1" cellpadding="5" cellspacing="0" class="table table-striped">
         <thead>
             <tr>
                 <th>Danh mục</th>
@@ -27,7 +26,7 @@
                         Chưa phân loại
                     {% endif %}
                 </td>
-                <td>{{ transaction.get_type_display() }}</td>
+                <td>{{ transaction.get_type_display }}</td>
                 <td>{{ transaction.amount }}</td>
                 <td>{{ transaction.note }}</td>
                 <td>{{ transaction.date }}</td>
@@ -40,6 +39,7 @@
             {% endfor %}
         </tbody>
     </table>
+
     {% if page_obj.has_other_pages %}
     <div class="pagination" style="margin-top: 15px;">
         {% if page_obj.has_previous %}
@@ -56,4 +56,5 @@
     </div>
     {% endif %}
 </div>
+
 {% endblock %}
