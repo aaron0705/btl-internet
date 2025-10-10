@@ -121,21 +121,38 @@ def transactions(request):
         "page_obj": page_obj
     })
 
+@login_required
+def export_csv_page(request):
+    """Hiển thị form chọn kiểu lọc trước khi xuất CSV"""
+    return render(request, "export_csv.html")
+
 # Xuất CSV
 @login_required
 def export_csv(request):
-    # Lấy toàn bộ giao dịch của user hiện tại
-    transactions = Transaction.objects.filter(user=request.user).order_by('-date', '-time')
+    filter_type = request.GET.get("filter_type", "all")
+    value = request.GET.get("value", "")
 
-    # Tạo response HTTP dạng CSV
+    print(">>> DEBUG:", filter_type, value)  # Kiểm tra xem có nhận được không
+
+    transactions = Transaction.objects.filter(user=request.user)
+
+    if filter_type == "day" and value:
+        transactions = transactions.filter(date=value)
+    elif filter_type == "month" and value:
+        year, month = value.split("-")
+        transactions = transactions.filter(date__year=year, date__month=month)
+    elif filter_type == "year" and value:
+        transactions = transactions.filter(date__year=value)
+
+    transactions = transactions.order_by('-date', '-time')
+
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="transactions.csv"'
+    filename = f"transactions_{filter_type}_{value or 'all'}.csv"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
-    # Tạo writer
     writer = csv.writer(response)
     writer.writerow(['Ngày', 'Giờ', 'Loại', 'Danh mục', 'Số tiền', 'Ghi chú'])
 
-    # Ghi từng dòng dữ liệu
     for t in transactions:
         writer.writerow([
             t.date.strftime('%Y-%m-%d'),
@@ -145,7 +162,6 @@ def export_csv(request):
             f"{t.amount:.2f}",
             t.note
         ])
-
     return response
 
 
