@@ -52,7 +52,7 @@
     <nav class="navbar">
         <ul>
             <li><a href="{% url 'category_list' %}">Danh mục</a></li>
-            <li><a href="{% url 'transactions' %}">Giao dịch</a></li>
+            <li><a href="{% url 'transactions' %}?filter=false&pn=1">Giao dịch</a></li>
             <li><a href="{% url 'export_csv' %}">Xuất CSV</a></li>
             <li><a href="{% url 'summary' %}">Tổng kết</a></li>
         </ul>

@@ -1,0 +1,84 @@
+{% extends "index.html" %}
+{% block title %}Tổng kết thu chi{% endblock %}
+{% block content %}
+<h2>Tổng kết thu chi</h2>
+
+<div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
+    <div>
+        <h3>Biểu đồ tỉ lệ thu - chi (tròn)</h3>
+        <canvas id="pieChart" width="300" height="300"></canvas>
+    </div>
+    <div>
+        <h3>Biểu đồ xu hướng thu - chi (vùng)</h3>
+        <canvas id="areaChart" width="400" height="300"></canvas>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Lấy dữ liệu từ Django context
+    const labels = {{ labels|safe }};
+    const incomeData = {{ income_data|safe }};
+    const expenseData = {{ expense_data|safe }};
+
+    // Biểu đồ tròn (Pie)
+    const ctxPie = document.getElementById('pieChart').getContext('2d');
+    new Chart(ctxPie, {
+        type: 'pie',
+        data: {
+            labels: ['Thu nhập', 'Chi tiêu'],
+            datasets: [{
+                data: [{{ total_income }}, {{ total_expense }}],
+                backgroundColor: ['green', 'red']
+            }]
+        },
+        options: {
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Tỉ lệ thu / chi'
+                }
+            }
+        }
+    });
+
+    // Biểu đồ vùng (Area)
+    const ctxArea = document.getElementById('areaChart').getContext('2d');
+    new Chart(ctxArea, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Thu nhập',
+                    data: incomeData,
+                    fill: true,
+                    backgroundColor: 'rgba(0,255,0,0.2)',
+                    borderColor: 'green',
+                    tension: 0.3
+                },
+                {
+                    label: 'Chi tiêu',
+                    data: expenseData,
+                    fill: true,
+                    backgroundColor: 'rgba(255,0,0,0.2)',
+                    borderColor: 'red',
+                    tension: 0.3
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Xu hướng thu / chi theo thời gian'
+                }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+</script>
+{% endblock %}

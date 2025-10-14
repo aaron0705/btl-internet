@@ -7,22 +7,9 @@ from datetime import datetime, timedelta
 import re
 from .models import Category
 from .forms import CategoryForm
+from django.core.paginator import Paginator 
+import json
 
-
-# Create your views here.\
-# Kết nối database
-conn = pymysql.connect(
-    host="localhost",
-    user="django",
-    password="matkhau123",
-    port=3306,
-    database="btl_web",
-    charset="utf8mb4",
-    cursorclass=pymysql.cursors.DictCursor
-)
-
-# 2. Tạo cursor
-cursor = conn.cursor()
 
 # đăng ký
 def sign_up(request):
@@ -40,10 +27,12 @@ def sign_up(request):
 
         # Tạo user mới
         new_user = User.objects.create_user(username=username, password=password1)
-        login(request, new_user)  # đăng nhập ngay sau khi đăng ký
+        login(request, new_user)  
+        # đăng nhập ngay sau khi đăng ký
         return redirect("sign_in")
 
     return render(request, "signup.html")
+
 
 # đăng nhập
 def sign_in(request):
@@ -54,27 +43,24 @@ def sign_in(request):
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
-            # Đúng tài khoản -> tạo và lưu trong bảng
             login(request, user)
-            return redirect("dashboard")  # chuyển hướng sau khi đăng nhập trở về trang chính
+            return redirect("dashboard")
         else:
-            # Sai thông tin -> lại chuyển về trang đăng nhập
             return render(request, "signin.html", {"error": "Sai tài khoản hoặc mật khẩu"})
         
     return render(request, "signin.html")
 
+
 # đăng xuất
+@login_required
 def sign_out(request):
     logout(request)
     return redirect("sign_in")
 
-def dashboard(request):
-    return render(request, "dashboard.html")
 
 @login_required
 def dashboard(request):
     return render(request, "dashboard.html")
-
 
 
 @login_required
@@ -118,24 +104,137 @@ def category_delete(request, pk):
         return redirect("category_list")
     return render(request, "categories/category_confirm_delete.html", {"category": category})
 
+
+@login_required
 def transactions(request):
+    filter_flag = request.GET.get("filter", "false") == "true"
+    pn = int(request.GET.get("pn", 1))
+
+    # ✅ fix:2025-10-05 — Chuyển tạo kết nối DB vào trong hàm
+    conn = pymysql.connect(
+        host="localhost",
+        user="root",
+        password="",
+        port=3307,
+        database="btl_web",
+        charset="utf8mb4",
+        cursorclass=pymysql.cursors.DictCursor
+    )
+    cursor = conn.cursor()
+
     if request.method == "POST":
         type = request.POST.get("type")
         amounts = request.POST.get("amounts")
         now = datetime.now()
         date = now.date()
-        time = now.time()
+        time = now.strftime("%H:%M")
         note = request.POST.get("note")
 
-        cursor.execute("INSERT INTO transactions VALUES (%s, %s, %s, %s, %s)", (type, amounts, date, time, note))
+        # ✅ fix:2025-10-05 — Thêm tên cột rõ ràng + commit DB
+        cursor.execute(
+            "INSERT INTO transactions (type, amount, date, time, note) VALUES (%s, %s, %s, %s, %s)",
+            (type, amounts, date, time, note)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
         return redirect("transactions")
 
-    cmd = "SELECT * FROM transactions"
-    cursor.execute(cmd + ";")
+    # ✅ fix:2025-10-05 — Đọc dữ liệu rồi đóng kết nối
+    cursor.execute("SELECT * FROM transactions;")
     transactions = cursor.fetchall()
-    return render(request, "transactions.html", {"transactions" : transactions})
+    cursor.close()
+    conn.close()
 
-def transaction_filer_option(request):
+    if filter_flag:
+        transactions = transacton_filter(request, transactions)
+
+    page_list, page = paging_obj(transactions, pn)
+    return render(request, "transactions.html", {
+        "page_list": page_list,
+        "page_obj": page
+    })
+
+
+def filter_by_type(transactions, option):
+    """Lọc giao dịch theo loại thu/chi"""
+    return [t for t in transactions if t["type"] == option]
+
+
+def filter_by_amount(transactions, request):
+    """Lọc giao dịch theo số tiền (min, max)"""
+    min_val = float(request.POST.get("min", 0))
+    max_val = float(request.POST.get("max", float("inf")))
+    return [
+        t for t in transactions
+        if min_val <= float(t["amount"]) <= max_val
+    ]
+
+
+def filter_by_date(transactions, option):
+    """Lọc giao dịch theo ngày (hôm nay, hôm qua, tuần này,...)"""
+    today = datetime.today().date()
+    yesterday = today - timedelta(days=1)
+    today_str = today.strftime("%Y-%m-%d")
+    yesterday_str = yesterday.strftime("%Y-%m-%d")
+
+    patterns = {
+        "today": rf"^{today_str}$",
+        "yesterday": rf"^{yesterday_str}$",
+        "last7": rf"^{(today - timedelta(days=6)).strftime('%Y-%m-%d')}|.*{today_str}$",
+        "last30": r"^\d{4}-\d{2}-\d{2}$",
+        "this_month": rf"^{today.strftime('%Y-%m')}-\d{{2}}$",
+        "last_month": rf"^{(today - timedelta(days=today.day)).strftime('%Y-%m')}-\d{{2}}$",
+    }
+
+    pattern = patterns.get(option)
+    if not pattern:
+        return transactions
+    return [t for t in transactions if re.search(pattern, t["date"])]
+
+
+def filter_by_time(transactions, option):
+    """Lọc giao dịch theo khung giờ"""
+    patterns = {
+        "all_day": r"^(?:[01]\d|2[0-3]):[0-5]\d$",
+        "morning": r"^(0[6-9]|1[0-1]):[0-5]\d$",
+        "afternoon": r"^(1[2-7]):[0-5]\d$",
+        "evening": r"^(1[8-9]|2[0-3]):[0-5]\d$",
+        "night": r"^(0[0-5]):[0-5]\d$",
+    }
+    pattern = patterns.get(option)
+    if not pattern:
+        return transactions
+    return [t for t in transactions if re.match(pattern, t["time"])]
+
+
+def filter_by_note(transactions, option):
+    """Lọc giao dịch theo nội dung ghi chú"""
+    patterns = {
+        "has_note": r"^.+$",
+        "no_note": r"^\s*$",
+        "food": r".*(ăn|cơm|phở|nhà hàng|quán|food).*",
+        "shopping": r".*(mua|shop|quần áo|giày dép|shopping).*",
+        "bills": r".*(hóa\s*đơn|điện|nước|internet|bill).*",
+        "entertainment": r".*(xem phim|karaoke|game|giải\s*trí).*",
+        "other": None
+    }
+
+    pattern = patterns.get(option)
+    result = []
+    for t in transactions:
+        note = t["note"].lower().strip() if t["note"] else ""
+        if pattern and re.search(pattern, note):
+            result.append(t)
+        elif option == "other" and note and not any(
+            re.search(p, note) for k, p in patterns.items() if k not in ["other", "no_note"]
+        ):
+            result.append(t)
+    return result
+
+@login_required
+def transaction_filter_option(request):  
+    # ✅ fix:2025-10-05 — đổi tên đúng (filer → filter)
     if request.method == "POST":
         field = request.POST.get("field")
 
@@ -147,20 +246,11 @@ def transaction_filer_option(request):
                 options = ["min, max", "min", "max"]
             case "date":
                 options = [
-                    "today",        # Hôm nay
-                    "yesterday",    # Hôm qua
-                    "last7",        # 7 ngày qua
-                    "last30",       # 30 ngày qua
-                    "this_month",   # Tháng này
-                    "last_month"    # Tháng trước
+                    "today", "yesterday", "last7", "last30", "this_month", "last_month"
                 ]
             case "time":
                 options = [
-                    "all_day",    # Cả ngày
-                    "morning",    # Buổi sáng
-                    "afternoon",  # Buổi chiều
-                    "evening",    # Buổi tối
-                    "night"       # Ban đêm
+                    "all_day", "morning", "afternoon", "evening", "night"
                 ]
             case "note":
                 options = [
@@ -172,123 +262,185 @@ def transaction_filer_option(request):
                     ("has_note", "Có ghi chú"),
                     ("no_note", "Không có ghi chú")
                 ]
-        # Trả về trang filter.html rồi hiện lên các option dạng lựa chọn rồi chọn l
-    return render(request, "filter.html", {"option" : options})
 
-def transacton_filter(request):
-    cursor.execute("SELECT * FROM transactions;")
-    transactions = cursor.fetchall()
-    match_transaction = []
-    if request.method == "POST":
-        field = request.POST.get("field")
-        option = request.POST.get("option")
-    
-        for transaction in transactions:
-            match field:
-                case "type":
-                    match option:
-                        case 'thu':
-                            if transaction['type'] == 'thu':
-                                match_transaction.append(transaction)
-                        case 'chi':
-                            if transaction['type'] == 'chi':
-                                match_transaction.append(transaction)
-                    
-                case "amount":
-                    match option:
-                        case 'min, max':
-                            min = request.POST.get("min")
-                            max = request.POST.get("max")
-                        case 'min':
-                            min = request.POST.get("min")
-                            max = float('inf')
-                        case 'max':
-                            min = 0
-                            max = request.POST.get("max")
-                    if int(transaction['amount']) > min and transaction['amount'] <= max:
-                        match_transaction.append(transaction)
+    # ✅ fix:2025-10-05 — đổi key trả về cho đúng
+    return render(request, "filter.html", {"options": options})
 
-                case "date":
-                    # --- Lấy ngày hiện tại và hôm qua ---
-                    today_date = datetime.today().date()
-                    yesterday_date = today_date - timedelta(days=1)
 
-                    today_str = today_date.strftime("%Y-%m-%d")
-                    yesterday_str = yesterday_date.strftime("%Y-%m-%d")
+@login_required
+def transacton_filter(request, transactions):
+    """Hàm tổng điều hướng đến các bộ lọc con"""
+    if request.method != "POST":
+        return transactions
 
-                    # --- Sinh regex pattern ---
-                    patterns = {
-                        "today": rf"^{today_str}$",
-                        "yesterday": rf"^{yesterday_str}$",
-                        # last7: từ (today - 6 ngày) -> today
-                        "last7": rf"^{(today_date - timedelta(days=6)).strftime('%Y-%m-%d')}|.*{today_str}$",
-                        # last30: từ (today - 29 ngày) -> today
-                        "last30": r"^\d{4}-\d{2}-\d{2}$",  # regex chỉ kiểm tra định dạng, khoảng ngày lọc thêm bằng logic
-                        # this_month: tất cả ngày trong tháng hiện tại
-                        "this_month": rf"^{today_date.strftime('%Y-%m')}-\d{{2}}$",
-                        # last_month: tất cả ngày trong tháng trước
-                        "last_month": rf"^{(today_date - timedelta(days=today_date.day)).strftime('%Y-%m')}-\d{{2}}$",
-                    }
-                    for key, pattern in patterns.items():
-                        if re.match(pattern, transaction['date']):
-                            match_transaction.append(transaction)
-                        
-                case "time":
-                    patterns = {
-                        # all_day: bất kỳ giờ phút hợp lệ
-                        "all_day": r"^(?:[01]\d|2[0-3]):[0-5]\d$",
+    field = request.POST.get("field")
+    option = request.POST.get("option")
 
-                        # morning: 06:00 – 11:59
-                        "morning": r"^(0[6-9]|1[0-1]):[0-5]\d$",
+    match field:
+        case "type":
+            return filter_by_type(transactions, option)
+        case "amount":
+            return filter_by_amount(transactions, request)
+        case "date":
+            return filter_by_date(transactions, option)
+        case "time":
+            return filter_by_time(transactions, option)
+        case "note":
+            return filter_by_note(transactions, option)
+        case _:
+            return transactions
 
-                        # afternoon: 12:00 – 17:59
-                        "afternoon": r"^(1[2-7]):[0-5]\d$",
 
-                        # evening: 18:00 – 23:59
-                        "evening": r"^(1[8-9]|2[0-3]):[0-5]\d$",
+# ✅ fix:2025-10-05 — Giữ nguyên logic phân trang
+def paging_obj(obj, pn):
+    paginator = Paginator(obj, 10)
+    page_obj = paginator.get_page(pn)
+    return [page_obj.object_list, page_obj]
 
-                        # night: 00:00 – 05:59
-                        "night": r"^(0[0-5]):[0-5]\d$",
-                    }
-                    for key, pattern in patterns.items():
-                        if re.match(pattern, transaction['date']):
-                            match_transaction.append(transaction)
-                case "note":
-                    patterns = {
-                        # Có ghi chú (bất kỳ ký tự nào, không chỉ khoảng trắng)
-                        "has_note": r"^.+$",
 
-                        # Không có ghi chú (chuỗi rỗng hoặc chỉ toàn khoảng trắng)
-                        "no_note": r"^\s*$",
-
-                        # Food: chứa từ khóa liên quan ăn uống
-                        "food": r".*(ăn|cơm|phở|nhà hàng|quán|food).*",
-
-                        # Shopping: chứa từ khóa liên quan mua sắm
-                        "shopping": r".*(mua|shop|quần áo|giày dép|shopping).*",
-
-                        # Bills: chứa từ khóa hóa đơn
-                        "bills": r".*(hóa\s*đơn|điện|nước|internet|bill).*",
-
-                        # Entertainment: chứa từ khóa giải trí
-                        "entertainment": r".*(xem phim|karaoke|game|giải\s*trí).*",
-
-                        # Other: có note nhưng không match nhóm nào ở trên
-                        # (regex không thể tự phân biệt -> cần kiểm tra bằng logic Python)
-                        "other": None  
-                    }
-                    for key, pattern in patterns.items():
-                        if key != "other" and pattern and re.search(pattern, transaction['note'].lower()):
-                            match_transaction.append(transaction)
-                            break
-                    else:
-                        # Nếu không khớp nhóm nào nhưng note vẫn có nội dung => other
-                        if transaction['note'].strip():
-                            match_transaction.append(transaction)
-    return render(request, "transaction.html", {"transactions" : match_transaction})
-
+@login_required
 def export_csv(request):
     return render(request, "export.html")
 
+
+@login_required
 def summary(request):
-    return render(request, "summary.html")
+    
+    conn = pymysql.connect(
+        host="localhost",
+        user="root",
+        password="",
+        port=3307,
+        database="btl_web",
+        charset="utf8mb4",
+        cursorclass=pymysql.cursors.DictCursor
+    )
+    cursor = conn.cursor()
+
+    # Lấy tùy chọn người dùng chọn tổng kết
+    summary_option = request.GET.get("option", "month")  # mặc định là theo tháng
+
+    # Xác định câu truy vấn MySQL phù hợp
+    query = ""
+    params = ()
+
+    # Lấy ngày hiện tại
+    now = datetime.now()
+
+    # ---- Các truy vấn tổng hợp ----
+    match summary_option:
+        case "month":
+            query = """
+                SELECT MONTH(date) AS period,
+                       SUM(CASE WHEN type='thu' THEN amount ELSE 0 END) AS total_income,
+                       SUM(CASE WHEN type='chi' THEN amount ELSE 0 END) AS total_expense
+                FROM transactions
+                WHERE YEAR(date) = %s
+                GROUP BY MONTH(date)
+                ORDER BY MONTH(date);
+            """
+            params = (now.year,)
+
+        case "quarter":
+            query = """
+                SELECT QUARTER(date) AS period,
+                       SUM(CASE WHEN type='thu' THEN amount ELSE 0 END) AS total_income,
+                       SUM(CASE WHEN type='chi' THEN amount ELSE 0 END) AS total_expense
+                FROM transactions
+                WHERE YEAR(date) = %s
+                GROUP BY QUARTER(date)
+                ORDER BY QUARTER(date);
+            """
+            params = (now.year,)
+
+        case "year":
+            query = """
+                SELECT YEAR(date) AS period,
+                       SUM(CASE WHEN type='thu' THEN amount ELSE 0 END) AS total_income,
+                       SUM(CASE WHEN type='chi' THEN amount ELSE 0 END) AS total_expense
+                FROM transactions
+                GROUP BY YEAR(date)
+                ORDER BY YEAR(date);
+            """
+
+        case "2year":
+            start_year = now.year - 1
+            query = """
+                SELECT YEAR(date) AS period,
+                       SUM(CASE WHEN type='thu' THEN amount ELSE 0 END) AS total_income,
+                       SUM(CASE WHEN type='chi' THEN amount ELSE 0 END) AS total_expense
+                FROM transactions
+                WHERE YEAR(date) >= %s
+                GROUP BY YEAR(date)
+                ORDER BY YEAR(date);
+            """
+            params = (start_year,)
+
+        case "5year":
+            start_year = now.year - 4
+            query = """
+                SELECT YEAR(date) AS period,
+                       SUM(CASE WHEN type='thu' THEN amount ELSE 0 END) AS total_income,
+                       SUM(CASE WHEN type='chi' THEN amount ELSE 0 END) AS total_expense
+                FROM transactions
+                WHERE YEAR(date) >= %s
+                GROUP BY YEAR(date)
+                ORDER BY YEAR(date);
+            """
+            params = (start_year,)
+
+        case "10year":
+            start_year = now.year - 9
+            query = """
+                SELECT YEAR(date) AS period,
+                       SUM(CASE WHEN type='thu' THEN amount ELSE 0 END) AS total_income,
+                       SUM(CASE WHEN type='chi' THEN amount ELSE 0 END) AS total_expense
+                FROM transactions
+                WHERE YEAR(date) >= %s
+                GROUP BY YEAR(date)
+                ORDER BY YEAR(date);
+            """
+            params = (start_year,)
+
+        case _:
+            query = """
+                SELECT MONTH(date) AS period,
+                       SUM(CASE WHEN type='thu' THEN amount ELSE 0 END) AS total_income,
+                       SUM(CASE WHEN type='chi' THEN amount ELSE 0 END) AS total_expense
+                FROM transactions
+                WHERE YEAR(date) = %s
+                GROUP BY MONTH(date)
+                ORDER BY MONTH(date);
+            """
+            params = (now.year,)
+
+    # Thực thi truy vấn
+    cursor.execute(query, params)
+    result = cursor.fetchall()
+
+    # ---- Logic bổ sung bằng Python ----
+    total_income = sum(r['total_income'] for r in result)
+    total_expense = sum(r['total_expense'] for r in result)
+    total_expense_and_income = total_expense + total_income
+    net_balance = total_income - total_expense
+
+    # fix:2025-10-10 - chuẩn bị dữ liệu để hiển thị biểu đồ
+    labels = [str(r['period']) for r in result]
+    income_data = [float(r['total_income']) for r in result]
+    expense_data = [float(r['total_expense']) for r in result]
+
+    # fix:2025-10-10 - truyền sang template ở dạng JSON để Chart.js đọc được
+    context = {
+        "labels": json.dumps(labels),
+        "income_data": json.dumps(income_data),
+        "expense_data": json.dumps(expense_data),
+        "total_income": total_income,
+        "total_expense": total_expense,
+        "net_balance": net_balance,
+    }
+
+    cursor.close()
+    conn.close()
+    return render(request, "summary.html", context)
+
+    

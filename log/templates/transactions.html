@@ -181,8 +181,8 @@
             <div>
                 <label>Loại giao dịch</label>
                 <select required>
-                    <option value="income">Thu nhập</option>
-                    <option value="expense">Chi tiêu</option>
+                    <option value="income">Thu</option>
+                    <option value="expense">Chi</option>
                 </select>
             </div>
             <div>
@@ -193,15 +193,6 @@
                 <label>Ngày</label>
                 <input type="date" required>
             </div>
-            <div>
-                <label>Danh mục</label>
-                <select required>
-                    <option>Lương</option>
-                    <option>Ăn uống</option>
-                    <option>Di chuyển</option>
-                    <option>Giải trí</option>
-                </select>
-            </div>
             <div style="grid-column: span 2;">
                 <label>Ghi chú</label>
                 <textarea rows="2" placeholder="Nhập ghi chú..."></textarea>
@@ -211,37 +202,17 @@
 
         <!-- Danh sách giao dịch -->
         <ul class="transaction-list">
+            {% for page in page_list%}
             <li class="transaction-item">
                 <div class="transaction-info">
-                    <span class="transaction-type">Thu nhập</span>
-                    <span class="transaction-category">Lương</span>
-                    <span class="transaction-date">2025-10-10</span>
-                    <span class="transaction-note">Lương tháng 10</span>
-                </div>
-                <div style="text-align: right;">
-                    <span class="amount deposit">15,000,000₫</span>
-                    <div class="actions">
-                        <button>Sửa</button>
-                        <button>Xóa</button>
-                    </div>
+                <span class="transaction-type">{{ page.type }}</span>
+                <span class="transaction-amount">{{ page.amount }}</span>
+                <span class="transaction-date">{{ page.date }}</span>
+                <span class="transaction-time">{{ page.time }}</span>
+                <span class="transaction-note">{{ page.note }}</span>
                 </div>
             </li>
-
-            <li class="transaction-item">
-                <div class="transaction-info">
-                    <span class="transaction-type">Chi tiêu</span>
-                    <span class="transaction-category">Ăn uống</span>
-                    <span class="transaction-date">2025-10-09</span>
-                    <span class="transaction-note">Ăn tối với bạn</span>
-                </div>
-                <div style="text-align: right;">
-                    <span class="amount withdraw">-250,000₫</span>
-                    <div class="actions">
-                        <button>Sửa</button>
-                        <button>Xóa</button>
-                    </div>
-                </div>
-            </li>
+            {% endfor %}
         </ul>
     </div>
 </body>
