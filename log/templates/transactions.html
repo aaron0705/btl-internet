@@ -166,11 +166,14 @@
     }
 
 </style>
+
+
+
 </head>
 <body>
     <!-- Thanh menu -->
     <nav>
-        
+        {% block header %}<a href="{% url 'dashboard' %}">Trang chủ</a>{% endblock %}
     </nav>
 
     <div class="transaction-container">

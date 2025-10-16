@@ -1,0 +1,57 @@
+{% extends "index.html" %}
+{% block header %}<a href="{% url 'dashboard' %}">Trang chủ</a>{% endblock %}
+
+{% block content %}
+<div class="export-container">
+    <h2>Xuất dữ liệu CSV</h2>
+    <p>Chọn kiểu lọc bạn muốn xuất dữ liệu theo:</p>
+
+    <form method="get" action="{% url 'export_csv_download' %}" style="margin-top: 15px;">
+        <label for="filter_type"><strong>Xuất theo:</strong></label>
+        <select name="filter_type" id="filter_type" onchange="updateInputType(this)">
+            <option value="all">Tất cả</option>
+            <option value="day">Ngày</option>
+            <option value="month">Tháng</option>
+            <option value="year">Năm</option>
+        </select>
+
+        <input type="date" name="value" id="filter_value" style="margin-left:10px;">
+
+        <button type="submit" class="btn btn-success" style="margin-left:10px;">⬇ Xuất CSV</button>
+    </form>
+    {% for transaction in transactions %}
+        <li class="transaction-item">
+            <div class="transaction-info">
+            <span class="transaction-type">{{ page.type }}</span>
+            <span class="transaction-amount">{{ page.amount }}</span>
+            <span class="transaction-date">{{ page.date }}</span>
+            <span class="transaction-time">{{ page.time }}</span>
+            <span class="transaction-note">{{ page.note }}</span>
+            </div>
+        </li>
+    {% endfor %}
+</div>
+
+<script>
+function updateInputType(select) {
+    const input = document.getElementById("filter_value");
+    const type = select.value;
+    input.value = "";
+
+    if (type === "day") {
+        input.type = "date";
+        input.style.display = "inline-block";
+    } else if (type === "month") {
+        input.type = "month";
+        input.style.display = "inline-block";
+    } else if (type === "year") {
+        input.type = "number";
+        input.placeholder = "Nhập năm (VD: 2025)";
+        input.style.display = "inline-block";
+    } else {
+        input.style.display = "none";
+    }
+}
+updateInputType(document.getElementById("filter_type"));
+</script>
+{% endblock %}

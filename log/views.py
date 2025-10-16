@@ -3,12 +3,14 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 import pymysql
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import re
 from .models import Category
 from .forms import CategoryForm
 from django.core.paginator import Paginator 
 import json
+import csv
+from django.http import HttpResponse
 
 
 # đăng ký
@@ -109,19 +111,6 @@ def category_delete(request, pk):
 def transactions(request):
     filter_flag = request.GET.get("filter", "false") == "true"
     pn = int(request.GET.get("pn", 1))
-
-    # ✅ fix:2025-10-05 — Chuyển tạo kết nối DB vào trong hàm
-    conn = pymysql.connect(
-        host="localhost",
-        user="root",
-        password="",
-        port=3307,
-        database="btl_web",
-        charset="utf8mb4",
-        cursorclass=pymysql.cursors.DictCursor
-    )
-    cursor = conn.cursor()
-
     if request.method == "POST":
         type = request.POST.get("type")
         amounts = request.POST.get("amounts")
@@ -130,6 +119,16 @@ def transactions(request):
         time = now.strftime("%H:%M")
         note = request.POST.get("note")
 
+        conn = pymysql.connect(
+            host="localhost",
+            user="root",
+            password="",
+            port=3307,
+            database="btl_web",
+            charset="utf8mb4",
+            cursorclass=pymysql.cursors.DictCursor
+        )
+        cursor = conn.cursor()
         # ✅ fix:2025-10-05 — Thêm tên cột rõ ràng + commit DB
         cursor.execute(
             "INSERT INTO transactions (type, amount, date, time, note) VALUES (%s, %s, %s, %s, %s)",
@@ -141,10 +140,8 @@ def transactions(request):
         return redirect("transactions")
 
     # ✅ fix:2025-10-05 — Đọc dữ liệu rồi đóng kết nối
-    cursor.execute("SELECT * FROM transactions;")
-    transactions = cursor.fetchall()
-    cursor.close()
-    conn.close()
+    transactions = []
+    transactions = get_transactions("all", "")
 
     if filter_flag:
         transactions = transacton_filter(request, transactions)
@@ -298,10 +295,76 @@ def paging_obj(obj, pn):
     return [page_obj.object_list, page_obj]
 
 
-@login_required
-def export_csv(request):
-    return render(request, "export.html")
+# --- Hàm chung để lấy danh sách giao dịch từ CSDL ---
+def get_transactions(filter_type="all", value=""):
+    conn = pymysql.connect(
+        host="localhost",
+        user="root",
+        password="",
+        port=3307,
+        database="btl_web",
+        charset="utf8mb4",
+        cursorclass=pymysql.cursors.DictCursor
+    )
+    cursor = conn.cursor()
 
+    query = "SELECT type, amount, date, time, note FROM transactions"
+    params = ()
+
+    query_map = {
+        "day": "DATE(date) = %s",
+        "month": "DATE_FORMAT(date, '%Y-%m') = %s",
+        "year": "YEAR(date) = %s"
+    }
+
+    if filter_type in query_map and value:
+        query += f" WHERE {query_map[filter_type]}"
+        params = (value,)
+
+    query += " ORDER BY date;"
+    cursor.execute(query, params)
+    transactions = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+    return transactions
+
+@login_required
+# --- Hàm 1: Hiển thị form lọc và kết quả ---
+def export_csv_filter(request):
+    filter_type = request.GET.get("filter_type", "all")
+    value = request.GET.get("value", "")
+    transactions = get_transactions(filter_type, value)
+
+    return render(request, "export_csv.html", {"transactions" : transactions})
+
+@login_required
+# --- Hàm 2: Xuất CSV (dùng lại get_transactions) ---
+def export_csv_download(request):
+    filter_type = request.GET.get("filter_type", "all")
+    value = request.GET.get("value", "")
+    transactions = get_transactions(filter_type, value)
+
+    response = HttpResponse(content_type='text/csv')
+    filename = f"transactions_{filter_type}_{value or 'all'}.csv"
+    response['Content-Disposition'] = f'attachment; filename=\"{filename}\"'
+
+    writer = csv.writer(response)
+    writer.writerow(['Loại', 'Số tiền', 'Ngày', 'Giờ', 'Ghi chú'])
+
+    for t in transactions:
+        date_str = t["date"].strftime("%Y-%m-%d") if isinstance(t["date"], (datetime, date)) else str(t["date"])
+        time_str = t["time"].strftime("%H:%M:%S") if hasattr(t["time"], "strftime") else str(t["time"])
+        writer.writerow([
+            t["type"],
+            f"{float(t['amount']):.2f}",
+            date_str,
+            time_str,
+            t["note"] or ""
+        ])
+    return response
+
+    
 
 @login_required
 def summary(request):
