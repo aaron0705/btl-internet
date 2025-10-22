@@ -1,0 +1,129 @@
+{% extends "index.html" %}
+{% block title %}{% if form.instance.pk %}Sửa danh mục{% else %}Thêm danh mục{% endif %}{% endblock %}
+
+{% block header %}
+<nav class="navbar">
+  <div class="nav-left">
+    <a href="{% url 'dashboard' %}" class="nav-home">Trang chủ</a>
+  </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+<style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f7fa;
+    margin: 0;
+    padding: 0;
+  }
+
+  .form-container {
+    max-width: 600px;
+    margin: 80px auto;
+    background: #fff;
+    border-radius: 12px;
+    padding: 40px 30px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+  }
+
+  .form-container:hover {
+    transform: translateY(-3px);
+  }
+
+  .form-container h2 {
+    text-align: center;
+    color: #1e3a8a;
+    margin-bottom: 25px;
+    font-size: 26px;
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  label {
+    font-weight: 600;
+    color: #333;
+  }
+
+  input[type="text"], select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 16px;
+    transition: border-color 0.3s ease;
+  }
+
+  input[type="text"]:focus, select:focus {
+    border-color: #4e68a1;
+    outline: none;
+  }
+
+  button {
+    background-color: #2c3e50;
+    color: white;
+    border: none;
+    padding: 12px 0;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    margin-top: 10px;
+  }
+
+  button:hover {
+    background-color: #3f5871;
+  }
+
+  .back-link {
+    display: inline-block;
+    text-align: center;
+    text-decoration: none;
+    color: #2f4064;
+    font-weight: 500;
+    margin-top: 20px;
+    transition: color 0.3s ease;
+  }
+
+  .back-link:hover {
+    color: #1e40af;
+    text-decoration: underline;
+  }
+
+  /* Thanh header */
+  .navbar {
+      background-color: #2c3e50; /* xanh dương */
+      padding: 15px 25px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .nav-left .nav-home {
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 18px;
+    transition: color 0.3s ease;
+  }
+
+  .nav-left .nav-home:hover {
+    text-decoration: underline;
+  }
+</style>
+
+<div class="form-container">
+  <h2>{% if form.instance.pk %}Sửa danh mục{% else %}Thêm danh mục{% endif %}</h2>
+
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Lưu</button>
+  </form>
+
+  <a href="{% url 'category_list' %}" class="back-link">⬅ Quay lại danh sách</a>
+</div>
+{% endblock %}

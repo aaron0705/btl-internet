@@ -1,0 +1,215 @@
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f4f6f9;
+        margin: 0;
+        padding: 0;
+    }
+
+
+    nav {
+        width: 100%;
+        background-color: #2c3e50; /* nền xanh đậm */
+        padding: 14px 25px;
+        display: flex;
+        align-items: center;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    nav a {
+        color: #fff; /* chữ trắng */
+        font-weight: bold;
+        text-decoration: none;
+        font-size: 17px;
+    }
+
+    nav a:hover {
+        text-decoration: underline;
+    }
+
+    
+
+    /* Container chính */
+    .transaction-container {
+        max-width: 900px;
+        margin: 30px auto;
+        background: #fff;
+        padding: 25px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .transaction-container h2 {
+        text-align: center;
+        margin-bottom: 25px;
+        color: #2c3e50;
+    }
+
+    /* Form thêm/sửa giao dịch */
+    .transaction-form {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-bottom: 30px;
+    }
+
+    .transaction-form label {
+        font-weight: bold;
+        color: #333;
+    }
+
+    .transaction-form input,
+    .transaction-form select,
+    .transaction-form textarea {
+        padding: 8px 10px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 14px;
+        width: 100%;
+        resize: none;
+    }
+    .transaction-form textarea {
+        height: 70%;
+    }
+
+    .transaction-form button {
+        grid-column: span 2;
+        padding: 10px;
+        background: #2c3e50;
+        color: white;
+        font-weight: bold;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .transaction-form button:hover {
+        background: #34495e;
+    }
+
+    /* Danh sách giao dịch */
+    .transaction-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .transaction-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #eee;
+        padding: 12px 16px;
+    }
+
+    .transaction-item:last-child {
+        border-bottom: none;
+    }
+
+    .transaction-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .transaction-type {
+        font-weight: bold;
+    }
+
+    .transaction-date {
+        font-size: 12px;
+        color: #777;
+    }
+
+    .transaction-category {
+        font-size: 13px;
+        color: #555;
+    }
+
+    .transaction-note {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .amount {
+        font-weight: bold;
+        font-size: 16px;
+    }
+
+    .deposit {
+        color: #2ecc71; /* Thu nhập */
+    }
+
+    .withdraw {
+        color: #e74c3c; /* Chi tiêu */
+    }
+
+    .actions {
+        display: flex;
+        gap: 10px;
+    }
+
+    .actions button {
+        border: none;
+        background: none;
+        cursor: pointer;
+        font-size: 14px;
+        color: #3498db;
+    }
+
+    .actions button:hover {
+        text-decoration: underline;
+    }
+</style>
+
+</head>
+<body>
+    <!-- Thanh menu -->
+    <nav>
+        {% block header %}<a href="{% url 'dashboard' %}">Trang chủ</a>{% endblock %}
+    </nav>
+
+    <div class="transaction-container">
+        <h2>Quản Lý Giao Dịch</h2>
+
+        <!-- Form thêm giao dịch -->
+        <form class="transaction-form">
+            <div>
+                <label>Loại giao dịch</label>
+                <select required>
+                    <option value="income">Thu</option>
+                    <option value="expense">Chi</option>
+                </select>
+            </div>
+            <div>
+                <label>Số tiền (VNĐ)</label>
+                <input type="number" min="1" required>
+            </div>
+            <div>
+                <label>Ngày</label>
+                <input type="date" required>
+            </div>
+            <div style="grid-column: span 2;">
+                <label>Ghi chú</label>
+                <textarea rows="2" placeholder="Nhập ghi chú..."></textarea>
+            </div>
+            <button type="submit">Thêm giao dịch</button>
+        </form>
+
+        <!-- Danh sách giao dịch -->
+        <ul class="transaction-list">
+            {% for page in page_list %}
+            <li class="transaction-item">
+                <div class="transaction-info">
+                    <span class="transaction-type">{{ page.type }}</span>
+                    <span class="transaction-amount">{{ page.amount }}</span>
+                    <span class="transaction-date">{{ page.date }}</span>
+                    <span class="transaction-time">{{ page.time }}</span>
+                    <span class="transaction-note">{{ page.note }}</span>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</body>
+</html>

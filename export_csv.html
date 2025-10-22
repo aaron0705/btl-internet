@@ -1,0 +1,204 @@
+{% extends "index.html" %}
+{% block title %}Xuất dữ liệu CSV{% endblock %}
+
+{% block header %}
+<nav class="navbar">
+    <a href="{% url 'dashboard' %}" class="nav-link">Trang chủ</a>
+</nav>
+{% endblock %}
+
+{% block content %}
+<style>
+    /* Tổng thể */
+    body {
+        font-family: "Segoe UI", Arial, sans-serif;
+        background-color: #f4f6f9;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Thanh header */
+    .navbar {
+        background-color: #2c3e50;
+        padding: 15px 25px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .nav-link {
+        color: #fff;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 18px;
+        transition: color 0.3s ease;
+    }
+
+    .nav-link:hover {
+        text-decoration: underline;
+    }
+
+    /* Container chính */
+    .export-container {
+        max-width: 700px;
+        margin: 50px auto;
+        background: #fff;
+        padding: 30px 40px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .export-container h2 {
+        text-align: center;
+        color: #2c3e50;
+        font-size: 24px;
+        margin-bottom: 10px;
+    }
+
+    .export-container p {
+        text-align: center;
+        color: #555;
+        margin-bottom: 25px;
+        font-size: 16px;
+    }
+
+    /* Form chọn kiểu lọc */
+    form {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    label {
+        margin-right: 10px;
+        color: #2c3e50;
+    }
+
+    select, input[type="date"], input[type="month"], input[type="number"] {
+        padding: 8px 12px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 15px;
+        outline: none;
+        transition: border-color 0.3s;
+    }
+
+    select:focus, input:focus {
+        border-color: #007bff;
+    }
+
+    button {
+        background-color: #28a745;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 8px;
+        font-size: 15px;
+        cursor: pointer;
+        transition: background-color 0.3s, transform 0.2s;
+    }
+
+    button:hover {
+        background-color: #218838;
+        transform: translateY(-2px);
+    }
+
+    /* Danh sách giao dịch */
+    .transaction-item {
+        list-style: none;
+        background: #fafafa;
+        margin: 10px 0;
+        padding: 10px 15px;
+        border-radius: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+        transition: transform 0.2s;
+    }
+
+    .transaction-item:hover {
+        transform: translateY(-2px);
+        background: #f8f9fa;
+    }
+
+    .transaction-info {
+        display: flex;
+        gap: 20px;
+        font-size: 15px;
+        color: #333;
+        flex-wrap: wrap;
+    }
+
+    .transaction-type {
+        font-weight: bold;
+        color: #007bff;
+    }
+
+    .transaction-amount {
+        color: #28a745;
+        font-weight: 500;
+    }
+
+    .transaction-date, .transaction-time, .transaction-note {
+        color: #555;
+    }
+</style>
+
+<div class="export-container">
+    <h2>Xuất dữ liệu CSV</h2>
+    <p>Chọn kiểu lọc bạn muốn xuất dữ liệu theo:</p>
+
+    <form method="get" action="{% url 'export_csv_download' %}">
+        <label for="filter_type"><strong>Xuất theo:</strong></label>
+        <select name="filter_type" id="filter_type" onchange="updateInputType(this)">
+            <option value="all">Tất cả</option>
+            <option value="day">Ngày</option>
+            <option value="month">Tháng</option>
+            <option value="year">Năm</option>
+        </select>
+
+        <input type="date" name="value" id="filter_value" style="margin-left:10px;">
+
+        <button type="submit" class="btn btn-success" style="margin-left:10px;">⬇ Xuất CSV</button>
+    </form>
+
+    <ul style="margin-top: 30px; padding: 0;">
+        {% for transaction in transactions %}
+        <li class="transaction-item">
+            <div class="transaction-info">
+                <span class="transaction-type">{{ transaction.type }}</span>
+                <span class="transaction-amount">{{ transaction.amount }}</span>
+                <span class="transaction-date">{{ transaction.date }}</span>
+                <span class="transaction-time">{{ transaction.time }}</span>
+                <span class="transaction-note">{{ transaction.note }}</span>
+            </div>
+        </li>
+        {% empty %}
+        <p style="text-align:center; color:#777; margin-top:20px;">Không có giao dịch nào để hiển thị.</p>
+        {% endfor %}
+    </ul>
+</div>
+
+<script>
+function updateInputType(select) {
+    const input = document.getElementById("filter_value");
+    const type = select.value;
+    input.value = "";
+
+    if (type === "day") {
+        input.type = "date";
+        input.style.display = "inline-block";
+    } else if (type === "month") {
+        input.type = "month";
+        input.style.display = "inline-block";
+    } else if (type === "year") {
+        input.type = "number";
+        input.placeholder = "Nhập năm (VD: 2025)";
+        input.style.display = "inline-block";
+    } else {
+        input.style.display = "none";
+    }
+}
+updateInputType(document.getElementById("filter_type"));
+</script>
+{% endblock %}

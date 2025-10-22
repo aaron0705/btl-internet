@@ -1,0 +1,182 @@
+{% extends "index.html" %}
+{% block title %}Tổng kết thu chi{% endblock %}
+
+{% block header %}
+<nav class="navbar">
+    <a href="{% url 'dashboard' %}" class="nav-link">Trang chủ</a>
+</nav>
+{% endblock %}
+
+{% block content %}
+<style>
+    /* Tổng thể trang */
+    body {
+        font-family: "Segoe UI", Arial, sans-serif;
+        background-color: #f4f6f9;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Thanh header */
+    .navbar {
+        background-color: #2c3e50; /* xanh dương */
+        padding: 15px 25px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .nav-link {
+        color: #fff;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 18px;
+        transition: color 0.3s ease;
+    }
+
+    .nav-link:hover {
+        text-decoration: underline;
+    }
+
+    /* Tiêu đề chính */
+    h2 {
+        text-align: center;
+        color: #2c3e50;
+        margin-top: 25px;
+        font-size: 26px;
+    }
+
+    /* Bố cục chứa biểu đồ */
+    .chart-container {
+        display: flex;
+        justify-content: space-around;
+        flex-wrap: wrap;
+        gap: 30px;
+        margin: 40px auto;
+        max-width: 1000px;
+        background: #ffffff;
+        padding: 25px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Hộp chứa từng biểu đồ */
+    .chart-box {
+        text-align: center;
+        background: #fafafa;
+        padding: 20px;
+        border-radius: 10px;
+        width: 420px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .chart-box:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Tiêu đề nhỏ cho từng biểu đồ */
+    .chart-box h3 {
+        color: #34495e;
+        font-size: 18px;
+        margin-bottom: 10px;
+    }
+
+    /* Canvas (biểu đồ) */
+    canvas {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.05);
+    }
+</style>
+
+<h2> TỔNG KẾT THU CHI</h2>
+
+<div class="chart-container">
+    <div class="chart-box">
+        <h3>Biểu đồ tỉ lệ thu - chi (tròn)</h3>
+        <canvas id="pieChart" width="300" height="300"></canvas>
+    </div>
+
+    <div class="chart-box">
+        <h3>Biểu đồ xu hướng thu - chi (vùng)</h3>
+        <canvas id="areaChart" width="400" height="300"></canvas>
+    </div>
+</div>
+
+<!-- Thư viện Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Lấy dữ liệu từ Django context
+    const labels = {{ labels|safe }};
+    const incomeData = {{ income_data|safe }};
+    const expenseData = {{ expense_data|safe }};
+
+    // Biểu đồ tròn (Pie)
+    const ctxPie = document.getElementById('pieChart').getContext('2d');
+    new Chart(ctxPie, {
+        type: 'pie',
+        data: {
+            labels: ['Thu nhập', 'Chi tiêu'],
+            datasets: [{
+                data: [{{ total_income }}, {{ total_expense }}],
+                backgroundColor: ['#28a745', '#dc3545']
+            }]
+        },
+        options: {
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Tỉ lệ thu / chi',
+                    font: { size: 16 }
+                },
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+
+    // Biểu đồ vùng (Area)
+    const ctxArea = document.getElementById('areaChart').getContext('2d');
+    new Chart(ctxArea, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Thu nhập',
+                    data: incomeData,
+                    fill: true,
+                    backgroundColor: 'rgba(40,167,69,0.2)',
+                    borderColor: '#28a745',
+                    tension: 0.3
+                },
+                {
+                    label: 'Chi tiêu',
+                    data: expenseData,
+                    fill: true,
+                    backgroundColor: 'rgba(220,53,69,0.2)',
+                    borderColor: '#dc3545',
+                    tension: 0.3
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Xu hướng thu / chi theo thời gian',
+                    font: { size: 16 }
+                },
+                legend: {
+                    position: 'bottom'
+                }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+</script>
+{% endblock %}
