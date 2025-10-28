@@ -43,6 +43,95 @@
     text-align: center;
     margin-top: 40px;
 }
+
+/* --- Phần tiêu đề chung --- */
+.section-title {
+  text-align: center;
+  margin: 40px 0 20px;
+  font-size: 1.8em;
+  font-weight: bold;
+  color: #2c3e50;
+  border-bottom: 3px solid #3498db;
+  display: inline-block;
+  padding-bottom: 5px;
+}
+
+/* --- Bảng thị trường & đầu tư --- */
+.market-table {
+  width: 80%;
+  margin: 20px auto;
+  border-collapse: collapse;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  background: #fff;
+}
+
+.market-table th, .market-table td {
+  padding: 12px 15px;
+  border: 1px solid #ddd;
+}
+
+.market-table th {
+  background-color: #2c3e50;
+  color: #fff;
+  text-transform: uppercase;
+}
+
+.market-table tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.market-table tr:hover {
+  background-color: #f1f1f1;
+}
+
+/* --- Tin tức nổi bật --- */
+.news-list {
+  width: 80%;
+  margin: 20px auto;
+  padding: 0;
+  list-style: none;
+}
+
+.news-list li {
+  background: #fff;
+  margin-bottom: 15px;
+  padding: 15px;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  transition: transform 0.2s;
+}
+
+.news-list li:hover {
+  transform: translateY(-3px);
+}
+
+.news-list a {
+  font-weight: bold;
+  color: #2c3e50;
+  text-decoration: none;
+}
+
+.news-list a:hover {
+  color: #3498db;
+}
+
+.news-list small {
+  display: block;
+  margin-top: 5px;
+  color: #7f8c8d;
+  font-size: 0.85em;
+}
+
+/* --- Biểu đồ biến động --- */
+.chart-container {
+  width: 80%;
+  margin: 40px auto;
+  padding: 20px;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
 </style> 
 {% endblock %}
 
@@ -55,14 +144,67 @@
             <li><a href="{% url 'transactions' %}?filter=false&pn=1">Giao dịch</a></li>
             <li><a href="{% url 'export_csv_filter' %}">Xuất CSV</a></li>
             <li><a href="{% url 'summary' %}">Tổng kết</a></li>
+            <li><a href="{% url 'sign_out' %}">Đăng xuất</a></li>
         </ul>
     </nav>
 
     <!-- Nội dung chính -->
     <section class="dashboard-content">
         <h1>Bảng Điều Khiển</h1>
-        <p>Chọn tính năng ở menu trên để sử dụng.</p>
     </section>
+
+  <h2 class="section-title">🌍 Thị trường & Đầu tư</h2>
+
+  <!-- 1️⃣ Bảng chỉ số -->
+  <table border="1" class="market-table">
+    <tr><th class = "market-table th" >Chỉ số</th><th class = "market-table th" >Giá hiện tại</th><th class = "market-table th">Thay đổi (%)</th></tr>
+    {% for name, info in market_data.items %}
+    <tr>
+      <td class = "market-table td">{{ name }}</td>
+      <td class = "market-table td">{{ info.price | default:"N/A" }}</td>
+      <td class = "market-table td" style="color: {{ info.change|floatformat:2|yesno:'green,red' }}">
+        {{ info.change | default:"N/A" }}%
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <!-- 2️⃣ Tin tức đầu tư -->
+  <h3 style="margin-top:30px;">📰 Tin tức nổi bật</h3>
+  <ul class="news-list">
+    {% if news_list %}
+        {% for n in news_list %}
+            <li class="news-list li">
+                <a class="news-list a" href="{{ n.url }}" target="_blank">{{ n.title }}</a>
+                <small>({{ n.source }})</small>
+            </li>
+        {% endfor %}
+    {% else %}
+        <p>Chưa có tin tức mới</p>
+    {% endif %}
+</ul>
+
+
+  <!-- 3️⃣ Biểu đồ biến động -->
+  <h3 style="margin-top:40px;">💹 Biến động thị trường</h3>
+  <div class="chart-container">
+    <canvas id="marketChart" width="400" height="200"></canvas>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+    const ctx = document.getElementById('marketChart');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: [{% for n in market_data.keys %}'{{ n }}',{% endfor %}],
+        datasets: [{
+          label: 'Mức thay đổi (%)',
+          data: [{% for n in market_data.values %}{{ n.change|default:0 }},{% endfor %}],
+          backgroundColor: ['green','red','blue','orange','gray']
+        }]
+      }
+    });
+    </script>
+  </div>
 </div>
 {% endblock %}
 

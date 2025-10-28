@@ -1,4 +1,8 @@
-
+{% block header %}
+    <nav class="navbar">
+        <a href="{% url 'dashboard' %}" class="nav-link">Trang chủ</a>
+    </nav>
+{% endblock %}
 <style>
     body {
         font-family: Arial, sans-serif;
@@ -165,17 +169,19 @@
         text-decoration: underline;
     }
 
-</style>
+    .nav-link {
+        color: #fff;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 18px;
+        transition: color 0.3s ease;
+    }
 
+</style>
 
 
 </head>
 <body>
-    <!-- Thanh menu -->
-    <nav>
-        {% block header %}<a href="{% url 'dashboard' %}">Trang chủ</a>{% endblock %}
-    </nav>
-
     <div class="transaction-container">
         <h2>Quản Lý Giao Dịch</h2>
 
@@ -206,15 +212,19 @@
         <!-- Danh sách giao dịch -->
         <ul class="transaction-list">
             {% for page in page_list%}
-            <li class="transaction-item">
-                <div class="transaction-info">
-                <span class="transaction-type">{{ page.type }}</span>
-                <span class="transaction-amount">{{ page.amount }}</span>
-                <span class="transaction-date">{{ page.date }}</span>
-                <span class="transaction-time">{{ page.time }}</span>
-                <span class="transaction-note">{{ page.note }}</span>
-                </div>
-            </li>
+                {% if page %}
+                <li class="transaction-item">
+                    <div class="transaction-info">
+                    <span class="transaction-type">{{ page.type }}</span>
+                    <span class="transaction-amount">{{ page.amount }}</span>
+                    <span class="transaction-date">{{ page.date }}</span>
+                    <span class="transaction-time">{{ page.time }}</span>
+                    <span class="transaction-note">{{ page.note }}</span>
+                    </div>
+                </li>
+                {% else %}
+                    <p>Chưa có giao dịch</p>
+                {% endif %}
             {% endfor %}
         </ul>
     </div>

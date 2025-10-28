@@ -1,12 +1,120 @@
 {% extends "index.html" %}
 
 {% block title %}Đăng xuất{% endblock %}
+{% block header %}{% endblock %}
 
 {% block content %}
-<h2>Bạn có chắc muốn đăng xuất?</h2>
+<style>
+    body {
+        font-family: 'Segoe UI', Arial, sans-serif;
+        background-color: #f4f6f9;
+        margin: 0;
+        padding: 0;
+    }
 
-<form method="POST" action="{% url 'sign_out' %}">
-    {% csrf_token %}
-    <button type="submit">Đăng xuất</button>
-</form>
+    /* === HEADER (giống dashboard) === */
+    header {
+        background-color: #2c3e50;
+        color: white;
+        padding: 20px 40px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    header .logo {
+        font-size: 20px;
+        font-weight: bold;
+    }
+
+    header nav {
+        display: flex;
+        gap: 30px;
+    }
+
+    header nav a {
+        color: white;
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.3s;
+    }
+
+    header nav a:hover {
+        color: #d1d8e0;
+    }
+
+    /* === FORM BOX === */
+    .logout-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: calc(100vh - 70px);
+    }
+
+    .logout-box {
+        background: #fff;
+        padding: 40px 50px;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        width: 400px;
+        text-align: center;
+        animation: fadeIn 0.5s ease;
+    }
+
+    h2 {
+        color: #2c3e50;
+        margin-bottom: 25px;
+        font-weight: 600;
+    }
+
+    button {
+        background-color: #2c3e50;
+        color: #fff;
+        padding: 10px 25px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    button:hover {
+        background-color: #1e2d3a;
+    }
+
+    .cancel-btn {
+        background-color: #bdc3c7;
+        color: #2c3e50;
+        margin-left: 10px;
+    }
+
+    .cancel-btn:hover {
+        background-color: #a4b0be;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+<!-- HEADER GIỐNG DASHBOARD -->
+<header>
+    <nav>
+    </nav>
+</header>
+
+<!-- FORM XÁC NHẬN ĐĂNG XUẤT -->
+<div class="logout-container">
+    <div class="logout-box">
+        <h2>Bạn có chắc muốn đăng xuất?</h2>
+        <form method="POST" action="{% url 'sign_out' %}">
+            {% csrf_token %}
+            <button type="submit">Đăng xuất</button>
+            <a href="{% url 'transactions' %}">
+                <button type="button" class="cancel-btn">Hủy</button>
+            </a>
+        </form>
+    </div>
+</div>
 {% endblock %}

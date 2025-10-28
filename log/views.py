@@ -11,6 +11,13 @@ from django.core.paginator import Paginator
 import json
 import csv
 from django.http import HttpResponse
+import yfinance as yf
+import requests
+from django.core.mail import EmailMessage
+from io import StringIO
+import io
+from django.core.mail import send_mail
+
 
 
 # đăng ký
@@ -35,7 +42,6 @@ def sign_up(request):
 
     return render(request, "signup.html")
 
-
 # đăng nhập
 def sign_in(request):
     if request.method == "POST":
@@ -52,7 +58,6 @@ def sign_in(request):
         
     return render(request, "signin.html")
 
-
 # đăng xuất
 @login_required
 def sign_out(request):
@@ -62,7 +67,62 @@ def sign_out(request):
 
 @login_required
 def dashboard(request):
-    return render(request, "dashboard.html")
+    tickers = {
+        "VN-Index": "^VNINDEX.VN",
+        "S&P 500": "^GSPC",
+        "Dow Jones": "^DJI",
+        "Vàng": "GC=F",
+        "Dầu Brent": "BZ=F"
+    }
+
+    data = {}
+    for name, code in tickers.items():
+        try:
+            ticker = yf.Ticker(code)
+            hist = ticker.history(period="5d")  # 5 ngày gần nhất
+            last = hist["Close"].iloc[-1]
+            prev = hist["Close"].iloc[-2]
+            change = round((last - prev) / prev * 100, 2)
+            data[name] = {"price": round(last, 2), "change": change}
+        except Exception:
+            data[name] = {"price": None, "change": None}
+
+    # --- Lấy tin tức đầu tư ---
+    news_api = "https://newsapi.org/v2/everything"
+    params = {
+        "q":"tesla",
+        "sortBy":"publishedAt",
+        "language": "en",
+        "apiKey": "5609d1642d77413e8073dc7247b79575",
+        "pageSize": 5
+    }
+    
+    news_list = []
+
+    try:
+        res = requests.get(news_api, params=params)
+        res.raise_for_status()  # Kiểm tra lỗi HTTP
+        news_data = res.json() 
+        print(res.json())
+        print("\n")
+        news = news_data.get("articles", [])
+        for n in news:
+            news_list.append({
+                "title": n.get("title"),
+                "url": n.get("url"),
+                "source": n.get("source", {}).get("name"),
+                "description": n.get("description", ""),
+                "publishedAt": n.get("publishedAt")
+            })
+    except Exception as e:
+        print("Lỗi khi lấy tin:", e)
+        news_list = []
+
+    print(f"News list is {news_list}\n")
+    return render(request, "dashboard.html", {
+        "market_data": data,
+        "news_list": news_list,
+    })
 
 
 @login_required
@@ -104,7 +164,7 @@ def category_delete(request, pk):
     if request.method == "POST":
         category.delete()
         return redirect("category_list")
-    return render(request, "categories/category_confirm_delete.html", {"category": category})
+    return render(request, "category_confirm_delete.html", {"category": category})
 
 
 @login_required
@@ -339,17 +399,17 @@ def export_csv_filter(request):
     return render(request, "export_csv.html", {"transactions" : transactions})
 
 @login_required
-# --- Hàm 2: Xuất CSV (dùng lại get_transactions) ---
 def export_csv_download(request):
-    filter_type = request.GET.get("filter_type", "all")
-    value = request.GET.get("value", "")
+    filter_type = request.POST.get("filter_type", "all")
+    value = request.POST.get("value", "")
+    export_method = request.POST.get("export_method", "download")
+    email_to = request.POST.get("email_to", "")
+
     transactions = get_transactions(filter_type, value)
 
-    response = HttpResponse(content_type='text/csv')
-    filename = f"transactions_{filter_type}_{value or 'all'}.csv"
-    response['Content-Disposition'] = f'attachment; filename=\"{filename}\"'
-
-    writer = csv.writer(response)
+    # --- Tạo file CSV trong bộ nhớ ---
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
     writer.writerow(['Loại', 'Số tiền', 'Ngày', 'Giờ', 'Ghi chú'])
 
     for t in transactions:
@@ -362,10 +422,33 @@ def export_csv_download(request):
             time_str,
             t["note"] or ""
         ])
-    return response
 
-    
+    csv_data = buffer.getvalue()
+    buffer.close()
 
+    # --- Nếu chọn tải về ---
+    if export_method == "download":
+        response = HttpResponse(csv_data, content_type='text/csv')
+        filename = f"transactions_{filter_type}_{value or 'all'}.csv"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+    # --- Nếu chọn gửi qua email ---
+    elif export_method == "email" and email_to:
+        email = EmailMessage(
+            subject="Dữ liệu CSV bạn yêu cầu",
+            body="Dưới đây là file CSV chứa dữ liệu giao dịch bạn đã yêu cầu.",
+            to=[email_to],
+        )
+        email.attach(f"transactions_{filter_type}_{value or 'all'}.csv", csv_data, "text/csv")
+        email.send()
+
+        return HttpResponse("<h3>✅ File CSV đã được gửi tới email của bạn!</h3>")
+
+    else:
+        return HttpResponse("<h3>⚠️ Vui lòng nhập email hợp lệ.</h3>")
+
+   
 @login_required
 def summary(request):
     
@@ -502,8 +585,12 @@ def summary(request):
         "net_balance": net_balance,
     }
 
+    
+
     cursor.close()
     conn.close()
     return render(request, "summary.html", context)
+
+
 
     

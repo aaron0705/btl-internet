@@ -1,19 +1,147 @@
 {% extends "index.html" %}
 
-{% block header %}<a href="{% url 'dashboard' %}">Trang chủ</a>{% endblock %}
+{% block header %}
+<nav class="navbar">
+    <a href="{% url 'dashboard' %}" class="nav-home">Trang chủ</a>
+</nav>
+{% endblock %}
 
 {% block content %}
+
+<style>
+    body {
+        font-family: "Segoe UI", sans-serif;
+        background: #f4f6f9;
+        margin: 0;
+        padding: 0;
+    }
+    
+/* Thanh header */
+    .navbar {
+        background-color: #2c3e50; /* xanh dương */
+        padding: 15px 25px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .nav-home {
+        color: #fff;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 18px;
+        transition: color 0.3s ease;
+    }
+
+    .nav-home:hover {
+        text-decoration: underline;
+    }
+
+    .container {
+        max-width: 900px;
+        margin: 40px auto;
+        background: #fff;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 25px;
+    }
+
+    a.add-category {
+        display: inline-block;
+        margin-bottom: 20px;
+        padding: 10px 16px;
+        background: #28a745;
+        color: #fff;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: bold;
+    }
+
+    a.add-category:hover {
+        background: #34c759;
+    }
+
+    ul {
+        list-style-type: none;
+        padding: 0;
+    }
+
+    li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #f1f3f5;
+        padding: 12px 15px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        transition: background 0.2s;
+    }
+
+    li:hover {
+        background: #e9ecef;
+    }
+
+    li span {
+        font-size: 16px;
+        color: #333;
+    }
+
+    .actions a {
+        text-decoration: none;
+        padding: 6px 10px;
+        border-radius: 5px;
+        color: white;
+        font-size: 14px;
+        margin-left: 5px;
+        transition: all 0.2s;
+    }
+
+    .actions a.edit {
+        background: #007bff;
+    }
+
+    .actions a.edit:hover {
+        background: #339af0;
+    }
+
+    .actions a.delete {
+        background: #dc3545;
+    }
+
+    .actions a.delete:hover {
+        background: #e74c3c;
+    }
+
+    .no-data {
+        text-align: center;
+        color: #6c757d;
+        font-style: italic;
+        margin-top: 15px;
+    }
+</style>
+
+<div class="container">
     <h1>Danh mục</h1>
-    <a href="{% url 'category_create' %}">+ Thêm danh mục</a>
+
+    <a href="{% url 'category_create' %}" class="add-category">+ Thêm danh mục</a>
+
     <ul>
-    {% for c in categories %}
-        <li>
-            {{ c.name }} ({{ c.get_type_display }})
-            <a href="{% url 'category_edit' c.id %}">Sửa</a>
-            <a href="{% url 'category_delete' c.id %}">Xóa</a>
-        </li>
-    {% empty %}
-    <li>Chưa có danh mục</li>
-    {% endfor %}
+        {% for c in categories %}
+            <li>
+                <span>{{ c.name }} ({{ c.get_type_display }})</span>
+                <div class="actions">
+                    <a href="{% url 'category_edit' c.id %}" class="edit">Sửa</a>
+                    <a href="{% url 'category_delete' c.id %}" class="delete">Xóa</a>
+                </div>
+            </li>
+        {% empty %}
+            <p class="no-data">Chưa có danh mục nào được thêm.</p>
+        {% endfor %}
     </ul>
+</div>
+
 {% endblock %}
