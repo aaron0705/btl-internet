@@ -122,6 +122,17 @@
         font-style: italic;
         margin-top: 15px;
     }
+    li span a {
+        font-weight: bold;
+        color: #2c3e50;
+        text-decoration: none;
+    }
+
+    li span a:hover {
+        color: #3498db;
+        text-decoration: underline;
+        cursor: pointer;
+    }
 </style>
 
 <div class="container">
@@ -132,7 +143,11 @@
     <ul>
         {% for c in categories %}
             <li>
-                <span>{{ c.name }} ({{ c.get_type_display }})</span>
+                <span>
+                    <a href="{% url 'transactions_page' 1 %}?filter=true&field=category&option={{ c.name|urlencode }}">
+                        {{ c.name }} ({{ c.get_type_display }})
+                    </a>
+                </span>
                 <div class="actions">
                     <a href="{% url 'category_edit' c.id %}" class="edit">Sửa</a>
                     <a href="{% url 'category_delete' c.id %}" class="delete">Xóa</a>
@@ -143,5 +158,4 @@
         {% endfor %}
     </ul>
 </div>
-
 {% endblock %}

@@ -1,6 +1,9 @@
 {% block header %}
     <nav class="navbar">
-        <a href="{% url 'dashboard' %}" class="nav-link">Trang chủ</a>
+        <ul>
+            <li><a href="{% url 'dashboard' %}" class="nav-link"> Trang chủ </a></li>
+            <li><a href="{% url 'filter' %}" class="nav-link"> Lọc giao dịch </a></li>
+        </ul>
     </nav>
 {% endblock %}
 <style>
@@ -97,47 +100,35 @@
     }
 
     /* Danh sách giao dịch */
-    .transaction-list {
-        list-style: none;
-        margin: 0;
-        padding: 0;
+    .transaction-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
     }
 
-    .transaction-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px solid #eee;
-        padding: 12px 16px;
+    .transaction-table th {
+        background-color: #2c3e50;
+        color: white;
+        padding: 10px;
+        text-align: center;
     }
 
-    .transaction-item:last-child {
-        border-bottom: none;
+    .transaction-table td {
+        border: 1px solid #ccc;
+        padding: 10px;
+        text-align: center;
     }
 
-    .transaction-info {
-        display: flex;
-        flex-direction: column;
+    .transaction-row:nth-child(even) {
+        background-color: #f2f2f2;
     }
 
-    .transaction-type {
-        font-weight: bold;
+    .no-data {
+        text-align: center;
+        color: #888;
+        font-style: italic;
     }
 
-    .transaction-date {
-        font-size: 12px;
-        color: #777;
-    }
-
-    .transaction-category {
-        font-size: 13px;
-        color: #555;
-    }
-
-    .transaction-note {
-        font-size: 12px;
-        color: #999;
-    }
 
     .amount {
         font-weight: bold;
@@ -186,47 +177,96 @@
         <h2>Quản Lý Giao Dịch</h2>
 
         <!-- Form thêm giao dịch -->
-        <form class="transaction-form">
+        <form class="transaction-form" action="{% url 'transactions_save' %}" method="POST">
+            {% csrf_token %}
+            
             <div>
                 <label>Loại giao dịch</label>
-                <select required>
-                    <option value="income">Thu</option>
-                    <option value="expense">Chi</option>
+                <select name="type" required>
+                    <option value="thu">Thu</option>
+                    <option value="chi">Chi</option>
                 </select>
             </div>
+
+            <div>
+                <label>Phân loại</label>
+                <select name="category" required>
+                    {% for c in categories %}
+                        <option value="{{ c.name }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
             <div>
                 <label>Số tiền (VNĐ)</label>
-                <input type="number" min="1" required>
+                <input type="number" name="amounts" min="1" required>
             </div>
+
             <div>
-                <label>Ngày</label>
-                <input type="date" required>
+                <label>Ngày giao dịch</label>
+                <input type="date" name="date">
             </div>
-            <div style="grid-column: span 2;">
+
+            <div>
+                <label>Giờ giao dịch</label>
+                <input type="time" name="time" step="60"> <!-- hh:mm -->
+                <select name="ampm">
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                </select>
+            </div>
+
+            <div>
                 <label>Ghi chú</label>
-                <textarea rows="2" placeholder="Nhập ghi chú..."></textarea>
+                <textarea name="note" rows="2" placeholder="Nhập ghi chú..."></textarea>
             </div>
+
             <button type="submit">Thêm giao dịch</button>
         </form>
 
         <!-- Danh sách giao dịch -->
-        <ul class="transaction-list">
-            {% for page in page_list%}
+        <table class="transaction-table">
+            <thead>
+                <tr>
+                    <th>Loại</th>
+                    <th>Số tiền</th>
+                    <th>Ngày</th>
+                    <th>Giờ</th>
+                    <th>Ghi chú</th>
+                </tr>
+            </thead>
+
+            <tbody>
+            {% for page in page_list %}
                 {% if page %}
-                <li class="transaction-item">
-                    <div class="transaction-info">
-                    <span class="transaction-type">{{ page.type }}</span>
-                    <span class="transaction-amount">{{ page.amount }}</span>
-                    <span class="transaction-date">{{ page.date }}</span>
-                    <span class="transaction-time">{{ page.time }}</span>
-                    <span class="transaction-note">{{ page.note }}</span>
-                    </div>
-                </li>
+                <tr class="transaction-row">
+                    <td class="transaction-type">{{ page.type }}</td>
+                    <td class="transaction-amount">{{ page.amount }}</td>
+                    <td class="transaction-date">{{ page.date }}</td>
+                    <td class="transaction-time">{{ page.time }}</td>
+                    <td class="transaction-note">{{ page.note }}</td>
+                </tr>
                 {% else %}
-                    <p>Chưa có giao dịch</p>
+                <tr>
+                    <td colspan="5" class="no-data">Chưa có giao dịch</td>
+                </tr>
                 {% endif %}
             {% endfor %}
-        </ul>
+            </tbody>
+        </table>
     </div>
+    {% if page_obj.has_other_pages %}
+    <div class="pagination">
+        {% if page_obj.has_previous %}
+            <a href="{% url 'transactions_page' page_obj.previous_page_number %}?{{ request.GET.urlencode }}">⬅ Trước</a>
+        {% endif %}
+
+        <span>Trang {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+
+        {% if page_obj.has_next %}
+            <a href="{% url 'transactions_page' page_obj.next_page_number %}?{{ request.GET.urlencode }}">Sau ➡</a>
+        {% endif %}
+    </div>
+    {% endif %}
 </body>
 </html>

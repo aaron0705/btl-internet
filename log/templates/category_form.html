@@ -4,7 +4,10 @@
 {% block header %}
 <nav class="navbar">
   <div class="nav-left">
-    <a href="{% url 'dashboard' %}" class="nav-home">Trang chủ</a>
+    <ul>
+        <li><a href="{% url 'category_list' %}" class="nav-home">Danh mục</a></li>
+        <li><a href="{% url 'dashboard' %}" class="nav-home">Trang chủ</a></li>
+    </ul>
   </div>
 </nav>
 {% endblock %}
@@ -101,7 +104,17 @@
       padding: 15px 25px;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   }
+  .navbar ul {
+    list-style: none;
+    display: flex;
+    justify-content: center; /* cân giữa */
+    margin: 0;
+    padding: 0;
+  }
 
+  .navbar li {
+      margin: 0 20px;
+  }
   .nav-left .nav-home {
     color: #fff;
     text-decoration: none;

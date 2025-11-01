@@ -10,13 +10,15 @@ from .forms import CategoryForm
 from django.core.paginator import Paginator 
 import json
 import csv
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect
 import yfinance as yf
 import requests
 from django.core.mail import EmailMessage
 from io import StringIO
 import io
 from django.core.mail import send_mail
+from urllib.parse import urlencode
+from django.urls import reverse
 
 
 
@@ -168,16 +170,53 @@ def category_delete(request, pk):
 
 
 @login_required
-def transactions(request):
-    filter_flag = request.GET.get("filter", "false") == "true"
-    pn = int(request.GET.get("pn", 1))
+def save_transactions(request):
     if request.method == "POST":
         type = request.POST.get("type")
-        amounts = request.POST.get("amounts")
+        category = request.POST.get("category")
+        amount = request.POST.get("amounts")
+        note = request.POST.get("note", "").strip()
+
+        # Xử lý ngày giờ
+        date_input = request.POST.get("date")
+        time_input = request.POST.get("time")
+        ampm = request.POST.get("ampm")
+
         now = datetime.now()
-        date = now.date()
-        time = now.strftime("%H:%M")
-        note = request.POST.get("note")
+
+        if date_input:
+            try:
+                date_val = datetime.strptime(date_input, "%Y-%m-%d").date()
+            except ValueError:
+                # fallback ngày hiện tại nếu người dùng nhập sai
+                date_val = now.date()
+        else:
+            date_val = now.date()
+
+        # Giờ
+        if time_input:
+            try:
+                h_str, m_str = time_input.split(":")[:2]
+                h = int(h_str)
+                m = int(m_str)
+            except Exception:
+                h, m = now.hour, now.minute
+
+            # Nếu input là 24h (13..23) => bỏ qua AM/PM
+            # Nếu input là 0..12 và có AM/PM => mới áp dụng quy tắc 12h
+            if 0 <= h <= 12 and ampm in ("AM", "PM"):
+                if ampm == "PM" and h != 12:
+                    h += 12           # 1..11 PM -> +12
+                elif ampm == "AM" and h == 12:
+                    h = 0             # 12 AM -> 00
+
+            # Chuẩn hoá lại phạm vi giờ/phút an toàn
+            h = min(max(h, 0), 23)
+            m = min(max(m, 0), 59)
+
+            time_val = f"{h:02d}:{m:02d}:00"     # lưu dạng HH:MM:SS cho MySQL TIME
+        else:
+            time_val = now.strftime("%H:%M:00")
 
         conn = pymysql.connect(
             host="localhost",
@@ -189,27 +228,43 @@ def transactions(request):
             cursorclass=pymysql.cursors.DictCursor
         )
         cursor = conn.cursor()
-        # ✅ fix:2025-10-05 — Thêm tên cột rõ ràng + commit DB
+
         cursor.execute(
-            "INSERT INTO transactions (type, amount, date, time, note) VALUES (%s, %s, %s, %s, %s)",
-            (type, amounts, date, time, note)
+            "INSERT INTO transactions (type, amount, date, time, note, category) VALUES (%s, %s, %s, %s, %s, %s)",
+            (type, amount, date_val, time_val, note, category)
         )
         conn.commit()
         cursor.close()
         conn.close()
-        return redirect("transactions")
 
-    # ✅ fix:2025-10-05 — Đọc dữ liệu rồi đóng kết nối
-    transactions = []
+        return redirect("transactions_default")
+
+
+@login_required
+def transactions(request, pn=None):
+    # pn có thể dùng từ path /transactions/page/<pn>/ hoặc GET ?pn=
+    pn = pn or int(request.GET.get("pn", 1))
+    field = None
+    option = None
+    
+    # đọc filter
+    if request.GET.get("filter") == "true":
+        field = request.GET.get("field")
+        option = request.GET.get("option")
+    categories = Category.objects.all()
+
+    # Lấy dữ liệu ban đầu
     transactions = get_transactions("all", "")
 
-    if filter_flag:
-        transactions = transacton_filter(request, transactions)
+    # ✅ gọi filter nếu có param
+    if field and option:
+        transactions = transacton_filter(request.GET, transactions)
 
     page_list, page = paging_obj(transactions, pn)
-    return render(request, "transactions.html", {
+    return render(request, f"transactions.html", {
         "page_list": page_list,
-        "page_obj": page
+        "page_obj": page,
+        'categories': categories
     })
 
 
@@ -219,9 +274,12 @@ def filter_by_type(transactions, option):
 
 
 def filter_by_amount(transactions, request):
-    """Lọc giao dịch theo số tiền (min, max)"""
-    min_val = float(request.POST.get("min", 0))
-    max_val = float(request.POST.get("max", float("inf")))
+    min_val = request.get("min")
+    max_val = request.get("max")
+
+    min_val = float(min_val) if min_val else 0
+    max_val = float(max_val) if max_val else float("inf")
+
     return [
         t for t in transactions
         if min_val <= float(t["amount"]) <= max_val
@@ -229,40 +287,65 @@ def filter_by_amount(transactions, request):
 
 
 def filter_by_date(transactions, option):
-    """Lọc giao dịch theo ngày (hôm nay, hôm qua, tuần này,...)"""
     today = datetime.today().date()
     yesterday = today - timedelta(days=1)
-    today_str = today.strftime("%Y-%m-%d")
-    yesterday_str = yesterday.strftime("%Y-%m-%d")
 
-    patterns = {
-        "today": rf"^{today_str}$",
-        "yesterday": rf"^{yesterday_str}$",
-        "last7": rf"^{(today - timedelta(days=6)).strftime('%Y-%m-%d')}|.*{today_str}$",
-        "last30": r"^\d{4}-\d{2}-\d{2}$",
-        "this_month": rf"^{today.strftime('%Y-%m')}-\d{{2}}$",
-        "last_month": rf"^{(today - timedelta(days=today.day)).strftime('%Y-%m')}-\d{{2}}$",
-    }
+    if option == "today":
+        return [t for t in transactions if t["date"] == today]
 
-    pattern = patterns.get(option)
-    if not pattern:
-        return transactions
-    return [t for t in transactions if re.search(pattern, t["date"])]
+    if option == "yesterday":
+        return [t for t in transactions if t["date"] == yesterday]
+
+    if option == "last7":
+        start = today - timedelta(days=7)
+        return [t for t in transactions if start <= t["date"] <= today]
+
+    if option == "last30":
+        start = today - timedelta(days=30)
+        return [t for t in transactions if start <= t["date"] <= today]
+
+    if option == "this_month":
+        return [t for t in transactions
+                if t["date"].year == today.year and t["date"].month == today.month]
+
+    if option == "last_month":
+        last_month = today.month - 1 or 12
+        year = today.year if today.month > 1 else today.year - 1
+        return [t for t in transactions
+                if t["date"].year == year and t["date"].month == last_month]
+
+    return transactions
+
+
+def filter_by_category(transactions, option):
+    opt = (option or "").strip().lower()
+    return [t for t in transactions if (t.get("category") or "").strip().lower() == opt]
 
 
 def filter_by_time(transactions, option):
-    """Lọc giao dịch theo khung giờ"""
-    patterns = {
-        "all_day": r"^(?:[01]\d|2[0-3]):[0-5]\d$",
-        "morning": r"^(0[6-9]|1[0-1]):[0-5]\d$",
-        "afternoon": r"^(1[2-7]):[0-5]\d$",
-        "evening": r"^(1[8-9]|2[0-3]):[0-5]\d$",
-        "night": r"^(0[0-5]):[0-5]\d$",
-    }
-    pattern = patterns.get(option)
-    if not pattern:
+    def get_hour(t):
+        return t["time"].hour if hasattr(t["time"], "hour") else int(str(t["time"])[:2])
+
+    if option == "all_day":
         return transactions
-    return [t for t in transactions if re.match(pattern, t["time"])]
+
+    if option == "morning":
+        # 06:00 → 11:59
+        return [t for t in transactions if 6 <= get_hour(t) <= 11]
+
+    if option == "afternoon":
+        # 12:00 → 17:59
+        return [t for t in transactions if 12 <= get_hour(t) <= 17]
+
+    if option == "evening":
+        # 18:00 → 21:59
+        return [t for t in transactions if 18 <= get_hour(t) <= 21]
+
+    if option == "night":
+        # 22:00 → 05:59 (qua ngày kế tiếp)
+        return [t for t in transactions if get_hour(t) >= 22 or get_hour(t) <= 5]
+
+    return transactions
 
 
 def filter_by_note(transactions, option):
@@ -289,49 +372,80 @@ def filter_by_note(transactions, option):
             result.append(t)
     return result
 
+
 @login_required
 def transaction_filter_option(request):  
-    # ✅ fix:2025-10-05 — đổi tên đúng (filer → filter)
+    field = None
+    options = []
+    categories = None
+    selected_option = None
+
     if request.method == "POST":
-        field = request.POST.get("field")
+        field = request.POST.get("field") or request.GET.get("field")
+        stage = request.POST.get("stage")
 
-        options = []
-        match field:
-            case "type":
-                options = ['thu', 'chi']
-            case "amount":
-                options = ["min, max", "min", "max"]
-            case "date":
-                options = [
-                    "today", "yesterday", "last7", "last30", "this_month", "last_month"
-                ]
-            case "time":
-                options = [
-                    "all_day", "morning", "afternoon", "evening", "night"
-                ]
-            case "note":
-                options = [
-                    ("food", "Ăn uống"),
-                    ("shopping", "Mua sắm"),
-                    ("bills", "Hóa đơn"),
-                    ("entertainment", "Giải trí"),
-                    ("other", "Khác"),
-                    ("has_note", "Có ghi chú"),
-                    ("no_note", "Không có ghi chú")
-                ]
+        # BƯỚC 1: Người dùng chọn field → hiển thị options của field
+        if stage == "select_field":
+            if field == "type":
+                options = ["thu", "chi"]
+            elif field == "amount":
+                options = ["min,max", "min", "max"]
+            elif field == "date":
+                options = ["today", "yesterday", "last7", "last30", "this_month", "last_month"]
+            elif field == "category":
+                # lấy danh mục của user, hiển thị như options
+                categories = Category.objects.filter(user=request.user).order_by("name")
+            elif field == "time":
+                options = ["all_day", "morning", "afternoon", "evening", "night"]
+            elif field == "note":
+                options = ["has_note", "no_note", "food", "shopping", "bills", "entertainment", "other"]
 
-    # ✅ fix:2025-10-05 — đổi key trả về cho đúng
-    return render(request, "filter.html", {"options": options})
+            return render(request, "filter.html", {
+                "field": field,
+                "options": options,         # ⬅️ dùng "options" (không phải "option")
+                "categories": categories
+            })
+
+        # BƯỚC 2: Người dùng chọn option
+        if stage == "choose_option":
+            selected_option = request.POST.get("option", "")
+
+            # Nếu field = amount → cần hỏi thêm min/max tùy option
+            if field == "amount":
+                return render(request, "filter.html", {
+                    "field": field,
+                    "options": ["min,max", "min", "max"],
+                    "selected_option": selected_option,  # để template biết hiển thị input nào
+                })
+
+            # Field khác amount → lọc ngay (redirect về trang giao dịch kèm query)
+            url = reverse("transactions_page", kwargs={"pn": 1})
+            return HttpResponseRedirect(
+                f"{url}?filter=true&field={field}&option={selected_option}"
+            )
+
+        # BƯỚC 3: Submit min/max cho amount → redirect về trang giao dịch
+        if stage == "filter":
+            selected_option = request.POST.get("selected_option") or request.POST.get("option") or ""
+            min_val = request.POST.get("min", "")
+            max_val = request.POST.get("max", "")
+
+            qs = {"filter": "true", "field": "amount", "option": selected_option}
+            if min_val:
+                qs["min"] = min_val
+            if max_val:
+                qs["max"] = max_val
+
+            url = reverse("transactions_page", kwargs={"pn": 1})
+            return HttpResponseRedirect(f"{url}?{urlencode(qs)}")
+
+    # Lần đầu mở form
+    return render(request, "filter.html")
 
 
-@login_required
 def transacton_filter(request, transactions):
-    """Hàm tổng điều hướng đến các bộ lọc con"""
-    if request.method != "POST":
-        return transactions
-
-    field = request.POST.get("field")
-    option = request.POST.get("option")
+    field = request.get("field")
+    option = request.get("option")
 
     match field:
         case "type":
@@ -344,6 +458,8 @@ def transacton_filter(request, transactions):
             return filter_by_time(transactions, option)
         case "note":
             return filter_by_note(transactions, option)
+        case "category":  # fix:2025-11-01 — thêm xử lý category
+            return filter_by_category(transactions, option)
         case _:
             return transactions
 
@@ -368,7 +484,7 @@ def get_transactions(filter_type="all", value=""):
     )
     cursor = conn.cursor()
 
-    query = "SELECT type, amount, date, time, note FROM transactions"
+    query = "SELECT type, amount, date, time, note, category FROM transactions"
     params = ()
 
     query_map = {
@@ -388,6 +504,7 @@ def get_transactions(filter_type="all", value=""):
     cursor.close()
     conn.close()
     return transactions
+
 
 @login_required
 # --- Hàm 1: Hiển thị form lọc và kết quả ---
@@ -448,7 +565,6 @@ def export_csv_download(request):
     else:
         return HttpResponse("<h3>⚠️ Vui lòng nhập email hợp lệ.</h3>")
 
-   
 @login_required
 def summary(request):
     

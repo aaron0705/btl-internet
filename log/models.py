@@ -5,8 +5,8 @@ from django.contrib.auth.models import User
 
 class Category(models.Model):
     TYPE_CHOICES = [
-        ('income', 'Thu nhập'),
-        ('expense', 'Chi tiêu'),
+        ('thu', 'Thu nhập'),
+        ('chi', 'Chi tiêu'),
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)

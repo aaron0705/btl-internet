@@ -1,0 +1,176 @@
+{% extends "index.html" %}
+{% block title %}Lọc giao dịch{% endblock %}
+{% block header %}
+    <nav class="navbar">
+        <ul>
+            <li><a href="{% url 'dashboard' %}" class="nav-link"> Trang chủ </a></li>
+            <li><a href="{% url 'transactions_default' %}">Giao dịch</a></li>
+        </ul>
+    </nav>
+{% endblock %}
+
+{% block content %}
+<style>
+    .filter-container {
+        width: 500px;
+        margin: 40px auto;
+        background: #fff;
+        padding: 25px;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        text-align: center;
+    }
+
+    .filter-title {
+        font-size: 1.6em;
+        font-weight: bold;
+        color: #2c3e50;
+        margin-bottom: 20px;
+        border-bottom: 3px solid #3498db;
+        display: inline-block;
+        padding-bottom: 5px;
+    }
+
+    .filter-form label {
+        display: block;
+        font-weight: bold;
+        margin-top: 15px;
+        text-align: left;
+        color: #2c3e50;
+    }
+
+    .filter-form select, 
+    .filter-form input {
+        width: 100%;
+        padding: 10px;
+        margin-top: 8px;
+        border-radius: 5px;
+        border: 1px solid #ddd;
+        outline: none;
+        transition: 0.3s;
+    }
+
+    .filter-form select:focus,
+    .filter-form input:focus {
+        border-color: #3498db;
+    }
+
+    .btn-filter {
+        margin-top: 25px;
+        padding: 10px;
+        width: 100%;
+        font-weight: bold;
+        background: #3498db;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: 0.3s;
+    }
+
+    .btn-filter:hover {
+        background: #2c3e50;
+    }
+
+    .btn-back {
+        margin-top: 10px;
+        display: inline-block;
+        text-decoration: none;
+        color: #3498db;
+        font-size: 14px;
+        font-weight: bold;
+    }
+
+    .btn-back:hover {
+        text-decoration: underline;
+    }
+    .navbar {
+      background-color: #2c3e50;
+      padding: 10px 0;
+  }
+
+  .navbar ul {
+      list-style: none;
+      display: flex;
+      justify-content: center; /* cân giữa */
+      margin: 0;
+      padding: 0;
+  }
+
+  .navbar li {
+      margin: 0 20px;
+  }
+
+  .navbar a {
+      text-decoration: none;
+      color: #ecf0f1;
+      font-weight: bold;
+      padding: 8px 16px;
+      border-radius: 4px;
+      transition: background 0.3s;
+  }
+</style>
+<h2>Lọc giao dịch</h2>
+
+<form method="post" class="filter-form">
+  {% csrf_token %}
+
+  <!-- BƯỚC 1: Chọn field -->
+  <label  for="field">Chọn tiêu chí lọc:</label>
+  <select class="filter-form select" name="field" id="field" required>
+    <option value="">-- Chọn tiêu chí --</option>
+    <option value="type"     {% if field == "type" %}selected{% endif %}>type</option>
+    <option value="amount"   {% if field == "amount" %}selected{% endif %}>amount</option>
+    <option value="date"     {% if field == "date" %}selected{% endif %}>date</option>
+    <option value="category" {% if field == "category" %}selected{% endif %}>category</option>
+    <option value="time"     {% if field == "time" %}selected{% endif %}>time</option>
+    <option value="note"     {% if field == "note" %}selected{% endif %}>note</option>
+  </select>
+
+  {% if not options and not categories %}
+    <!-- Sau khi chọn field thì bấm nút này để hiển thị options -->
+    <button class="filter-form input" type="submit" name="stage" value="select_field">Chọn</button>
+  {% endif %}
+
+  <br><br>
+
+  <!-- BƯỚC 2: Hiển thị options theo field (trừ category) -->
+  {% if options and field != "category" and not selected_option %}
+    <label for="option">Tùy chọn:</label>
+    <select name="option" id="option" required>
+      {% for op in options %}
+        <option value="{{ op }}">{{ op }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" name="stage" value="choose_option">Chọn</button>
+    <br><br>
+  {% endif %}
+
+  <!-- BƯỚC 2 (category): hiển thị danh mục để chọn -->
+  {% if categories and not selected_option %}
+    <label for="option">Chọn danh mục:</label>
+    <select name="option" id="option" required>
+      {% for c in categories %}
+        <option value="{{ c.name }}">{{ c.name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" name="stage" value="choose_option">Chọn</button>
+    <br><br>
+  {% endif %}
+
+  <!-- BƯỚC 3 (amount): Hiển thị input min/max tùy theo selected_option -->
+  {% if field == "amount" and selected_option %}
+    <input type="hidden" name="selected_option" value="{{ selected_option }}" >
+    {% if selected_option == "min,max" %}
+      <label>Min:</label><input type="number" name="min" step="0.01" required>
+      <label>Max:</label><input type="number" name="max" step="0.01" required>
+    {% elif selected_option == "min" %}
+      <label>Min:</label><input type="number" name="min" step="0.01" required>
+    {% elif selected_option == "max" %}
+      <label>Max:</label><input type="number" name="max" step="0.01" required>
+    {% endif %}
+    <br><br>
+    <button type="submit" name="stage" value="filter" class="btn-filter">Lọc</button>
+  {% endif %}
+</form>
+{% endblock %}
